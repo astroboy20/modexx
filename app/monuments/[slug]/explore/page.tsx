@@ -38,7 +38,7 @@ export default async function ExplorePage({ params }: { params: Promise<{ slug: 
         <p className="eyebrow"><span className="eyebrow-line" /> Your journey begins here</p>
         <h1>Step inside<br /><em>{monument.subject}&apos;s</em> story.</h1>
         <p className="explore-lede">Move through each chapter at your own pace. Listen closely, look again, and collect the details that make this monument yours.</p>
-        <button className="button button-dark">Begin chapter one <ArrowRight size={17} /></button>
+        <Link href={`/monuments/${slug}/explore/chapter-1`} className="button button-dark">Begin chapter one <ArrowRight size={17} /></Link>
       </section>
 
       <section className="explore-progress" aria-label="Monument chapters">
