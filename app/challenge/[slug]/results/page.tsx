@@ -9,7 +9,6 @@ import type { Monument, Question } from '@/lib/data/index'
 import {
   getActiveAttempt,
   clearActiveAttempt,
-  getRankedLeaderboard,
   type QuizAttempt,
 } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
@@ -42,9 +41,32 @@ export default function ResultsPage({ params }: { params: { slug: string } }) {
 
     if (player) {
       setDisplayName(player.displayName)
-      const leaderboard = getRankedLeaderboard(params.slug)
-      const myEntry = leaderboard.find((e) => e.playerId === player.id)
-      setRank(myEntry?.rank ?? null)
+      // Fetch rank from Supabase
+      fetch(`/api/leaderboard?slug=${params.slug}`)
+        .then((r) => r.json())
+        .then(({ entries }) => {
+          if (!entries) return
+          // rank entries
+          let rank = 1
+          const sorted = [...entries].sort((a: { score: number; correct_count: number; completion_seconds: number }, b: { score: number; correct_count: number; completion_seconds: number }) => {
+            if (b.score !== a.score) return b.score - a.score
+            if (b.correct_count !== a.correct_count) return b.correct_count - a.correct_count
+            return a.completion_seconds - b.completion_seconds
+          })
+          for (let i = 0; i < sorted.length; i++) {
+            if (i > 0) {
+              const prev = sorted[i - 1]
+              if (sorted[i].score !== prev.score || sorted[i].correct_count !== prev.correct_count || sorted[i].completion_seconds !== prev.completion_seconds) {
+                rank = i + 1
+              }
+            }
+            if (sorted[i].player_id === player.id) {
+              setRank(rank)
+              break
+            }
+          }
+        })
+        .catch(() => {})
     }
 
     const qMap = Object.fromEntries(m.questions.map((q) => [q.id, q]))

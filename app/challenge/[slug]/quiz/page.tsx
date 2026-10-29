@@ -10,7 +10,6 @@ import {
   getActiveAttempt,
   saveAttempt,
   addToHistory,
-  addLeaderboardEntry,
   generateId,
   type QuizAttempt,
 } from '@/lib/storage'
@@ -112,15 +111,19 @@ export default function QuizPage({ params }: { params: { slug: string } }) {
 
     saveAttempt(completed)
     addToHistory(completed)
-    addLeaderboardEntry({
-      id: generateId(),
-      playerId: player.id,
-      displayName: player.displayName,
-      monumentSlug: monument.slug,
-      score,
-      correctCount,
-      completionSeconds,
-      completedAt: now.toISOString(),
+
+    // Submit to Supabase leaderboard via API (fire and forget — don't block navigation)
+    fetch('/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        monumentSlug: monument.slug,
+        score,
+        correctCount,
+        completionSeconds,
+      }),
+    }).catch(() => {
+      // Silently fail — score is saved locally too
     })
 
     router.push(`/challenge/${monument.slug}/results`)

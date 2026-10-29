@@ -6,30 +6,32 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Trophy, Medal, RotateCcw } from 'lucide-react'
 import { getMonument } from '@/lib/data/index'
 import type { Monument } from '@/lib/data/index'
-import { getRankedLeaderboard, type LeaderboardEntry } from '@/lib/storage'
+import { fetchLeaderboard, type RankedEntry } from '@/lib/leaderboard'
 import { getClientSession } from '@/lib/session-client'
-
-type RankedEntry = LeaderboardEntry & { rank: number }
 
 export default function LeaderboardPage({ params }: { params: { slug: string } }) {
   const router = useRouter()
   const [monument, setMonument] = useState<Monument | null>(null)
   const [entries, setEntries] = useState<RankedEntry[]>([])
   const [myEntry, setMyEntry] = useState<RankedEntry | null>(null)
+  const [loading, setLoading] = useState(true)
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
     const m = getMonument(params.slug)
     if (!m) { router.replace('/monuments'); return }
 
-    const ranked = getRankedLeaderboard(params.slug)
-    const player = getClientSession()
-    const mine = player ? ranked.find((e) => e.playerId === player.id) ?? null : null
-
     setMonument(m)
-    setEntries(ranked.slice(0, 10))
-    setMyEntry(mine)
     setReady(true)
+
+    // Fetch leaderboard from Supabase
+    fetchLeaderboard(params.slug).then((ranked) => {
+      const player = getClientSession()
+      const mine = player ? ranked.find((e) => e.player_id === player.id) ?? null : null
+      setEntries(ranked.slice(0, 10))
+      setMyEntry(mine)
+      setLoading(false)
+    })
   }, [params.slug, router])
 
   if (!ready || !monument) {
@@ -72,18 +74,18 @@ export default function LeaderboardPage({ params }: { params: { slug: string } }
             </p>
             <h1 className="leaderboard-title">{monument.name}</h1>
             <p className="leaderboard-subtitle">{monument.subject} · {monument.scope}</p>
-            <p className="leaderboard-demo-note">Local demo leaderboard — rankings reflect this device only.</p>
           </div>
 
-          {myEntry && !entries.find((e) => e.playerId === myEntry.playerId) && (
+          {/* My position (if outside top 10) */}
+          {myEntry && !entries.find((e) => e.player_id === myEntry.player_id) && (
             <div className="my-position-banner" style={{ borderColor: accentColor }}>
               <p className="my-pos-label" style={{ color: accentColor }}>Your position</p>
               <div className="leaderboard-row my-row">
                 <span className="lb-rank">#{myEntry.rank}</span>
-                <span className="lb-name">@{myEntry.displayName} <span className="lb-you">(you)</span></span>
+                <span className="lb-name">@{myEntry.display_name} <span className="lb-you">(you)</span></span>
                 <span className="lb-score" style={{ color: accentColor }}>{myEntry.score}</span>
-                <span className="lb-correct">{myEntry.correctCount}/10</span>
-                <span className="lb-time">{formatTime(myEntry.completionSeconds)}</span>
+                <span className="lb-correct">{myEntry.correct_count}/10</span>
+                <span className="lb-time">{formatTime(myEntry.completion_seconds)}</span>
               </div>
             </div>
           )}
@@ -92,7 +94,12 @@ export default function LeaderboardPage({ params }: { params: { slug: string } }
             <div className="leaderboard-table-header">
               <span>Rank</span><span>Name</span><span>Score</span><span>Correct</span><span>Time</span>
             </div>
-            {entries.length === 0 ? (
+
+            {loading ? (
+              <div className="leaderboard-empty">
+                <p style={{ color: 'var(--muted)' }}>Loading rankings…</p>
+              </div>
+            ) : entries.length === 0 ? (
               <div className="leaderboard-empty">
                 <p>No entries yet. Be the first to complete the challenge!</p>
                 <Link href={`/challenge/${monument.slug}/instructions`} className="button button-primary" style={{ marginTop: 16 }}>
@@ -101,7 +108,7 @@ export default function LeaderboardPage({ params }: { params: { slug: string } }
               </div>
             ) : (
               entries.map((entry) => {
-                const isMe = player && entry.playerId === player.id
+                const isMe = player && entry.player_id === player.id
                 return (
                   <div
                     key={entry.id}
@@ -110,12 +117,12 @@ export default function LeaderboardPage({ params }: { params: { slug: string } }
                   >
                     <span className="lb-rank">{getRankIcon(entry.rank) ?? `#${entry.rank}`}</span>
                     <span className="lb-name">
-                      @{entry.displayName}
+                      @{entry.display_name}
                       {isMe && <span className="lb-you"> (you)</span>}
                     </span>
                     <span className="lb-score" style={{ color: accentColor }}>{entry.score}</span>
-                    <span className="lb-correct">{entry.correctCount}/10</span>
-                    <span className="lb-time">{formatTime(entry.completionSeconds)}</span>
+                    <span className="lb-correct">{entry.correct_count}/10</span>
+                    <span className="lb-time">{formatTime(entry.completion_seconds)}</span>
                   </div>
                 )
               })
