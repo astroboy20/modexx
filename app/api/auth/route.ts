@@ -13,7 +13,7 @@ interface SessionPayload {
 function setCookie(res: NextResponse, payload: SessionPayload) {
   const encoded = Buffer.from(JSON.stringify(payload)).toString('base64')
   res.cookies.set(COOKIE_NAME, encoded, {
-    httpOnly: true,
+    httpOnly: false,
     sameSite: 'lax',
     path: '/',
     maxAge: COOKIE_MAX_AGE,
@@ -71,8 +71,12 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (error || !player) {
-      console.error('Supabase insert error:', error)
-      return NextResponse.json({ error: 'Failed to create account. Please try again.' }, { status: 500 })
+      console.error('Supabase insert error:', JSON.stringify(error))
+      // Return the real error in dev so we can diagnose it
+      const msg = process.env.NODE_ENV === 'development'
+        ? `Supabase error: ${error?.message ?? 'unknown'} | code: ${error?.code ?? ''} | hint: ${error?.hint ?? ''}`
+        : 'Failed to create account. Please try again.'
+      return NextResponse.json({ error: msg }, { status: 500 })
     }
 
     const res = NextResponse.json({ ok: true, displayName: player.display_name })

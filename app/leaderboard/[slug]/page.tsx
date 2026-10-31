@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Trophy, Medal, RotateCcw } from 'lucide-react'
@@ -9,7 +9,8 @@ import type { Monument } from '@/lib/data/index'
 import { fetchLeaderboard, type RankedEntry } from '@/lib/leaderboard'
 import { getClientSession } from '@/lib/session-client'
 
-export default function LeaderboardPage({ params }: { params: { slug: string } }) {
+export default function LeaderboardPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = React.use(params)
   const router = useRouter()
   const [monument, setMonument] = useState<Monument | null>(null)
   const [entries, setEntries] = useState<RankedEntry[]>([])
@@ -18,21 +19,19 @@ export default function LeaderboardPage({ params }: { params: { slug: string } }
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    const m = getMonument(params.slug)
+    const m = getMonument(slug)
     if (!m) { router.replace('/monuments'); return }
-
     setMonument(m)
     setReady(true)
 
-    // Fetch leaderboard from Supabase
-    fetchLeaderboard(params.slug).then((ranked) => {
+    fetchLeaderboard(slug).then((ranked) => {
       const player = getClientSession()
       const mine = player ? ranked.find((e) => e.player_id === player.id) ?? null : null
       setEntries(ranked.slice(0, 10))
       setMyEntry(mine)
       setLoading(false)
     })
-  }, [params.slug, router])
+  }, [slug, router])
 
   if (!ready || !monument) {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading…</p></div>
@@ -47,105 +46,113 @@ export default function LeaderboardPage({ params }: { params: { slug: string } }
     return `${m}m ${s}s`
   }
 
-  function getRankIcon(rank: number) {
-    if (rank === 1) return <Medal size={18} style={{ color: '#f59e0b' }} aria-hidden="true" />
-    if (rank === 2) return <Medal size={18} style={{ color: '#9ca3af' }} aria-hidden="true" />
-    if (rank === 3) return <Medal size={18} style={{ color: '#b45309' }} aria-hidden="true" />
-    return null
+  function getRankBadge(rank: number) {
+    if (rank === 1) return <Medal size={20} style={{ color: '#f59e0b' }} />
+    if (rank === 2) return <Medal size={20} style={{ color: '#9ca3af' }} />
+    if (rank === 3) return <Medal size={20} style={{ color: '#b45309' }} />
+    return <span className="lb-rank-num">#{rank}</span>
+  }
+
+  function renderRow(entry: RankedEntry, isMe: boolean) {
+    return (
+      <div
+        key={entry.id}
+        className={`lb-row${isMe ? ' lb-row--me' : ''}${entry.rank <= 3 ? ' lb-row--top' : ''}`}
+        style={isMe ? { borderLeftColor: accentColor } : undefined}
+      >
+        <span className="lb-col-rank">{getRankBadge(entry.rank)}</span>
+        <span className="lb-col-name">
+          <span className="lb-display-name">@{entry.display_name}</span>
+          {isMe && <span className="lb-you-tag">you</span>}
+        </span>
+        <span className="lb-col-score" style={{ color: accentColor }}>{entry.score}</span>
+        <span className="lb-col-correct">{entry.correct_count}/10</span>
+        <span className="lb-col-time">{formatTime(entry.completion_seconds)}</span>
+      </div>
+    )
   }
 
   return (
     <main className="leaderboard-page">
-      <header className="site-header detail-header">
+      {/* Header — just back + wordmark, no cramped monument name */}
+      <header className="site-header lb-header">
         <Link href={`/monuments/${monument.slug}`} className="text-link">
           <ArrowLeft size={16} /> Monument
         </Link>
         <Link href="/" className="wordmark"><span>mod</span>exx<span className="wordmark-dot">.</span></Link>
-        <span className="detail-index" style={{ color: accentColor }}>{monument.name}</span>
+        <span style={{ width: 90 }} />
       </header>
 
       <div className="leaderboard-body">
         <div className="leaderboard-inner">
+
+          {/* Hero */}
           <div className="leaderboard-hero">
-            <Trophy size={40} style={{ color: accentColor }} aria-hidden="true" />
-            <p className="eyebrow" style={{ color: accentColor, justifyContent: 'center', marginTop: 16 }}>
+            <Trophy size={36} style={{ color: accentColor }} />
+            <p className="eyebrow lb-eyebrow" style={{ color: accentColor }}>
               <span className="eyebrow-line" style={{ background: accentColor }} />
               Competition rankings
             </p>
             <h1 className="leaderboard-title">{monument.name}</h1>
-            <p className="leaderboard-subtitle">{monument.subject} · {monument.scope}</p>
+            <p className="leaderboard-subtitle">
+              <span>{monument.subject}</span>
+              <span className="lb-subtitle-sep">·</span>
+              <span>{monument.scope}</span>
+            </p>
           </div>
 
-          {/* My position (if outside top 10) */}
+          {/* Your position banner (only if outside top 10) */}
           {myEntry && !entries.find((e) => e.player_id === myEntry.player_id) && (
-            <div className="my-position-banner" style={{ borderColor: accentColor }}>
-              <p className="my-pos-label" style={{ color: accentColor }}>Your position</p>
-              <div className="leaderboard-row my-row">
-                <span className="lb-rank">#{myEntry.rank}</span>
-                <span className="lb-name">@{myEntry.display_name} <span className="lb-you">(you)</span></span>
-                <span className="lb-score" style={{ color: accentColor }}>{myEntry.score}</span>
-                <span className="lb-correct">{myEntry.correct_count}/10</span>
-                <span className="lb-time">{formatTime(myEntry.completion_seconds)}</span>
-              </div>
+            <div className="lb-my-banner" style={{ borderColor: accentColor }}>
+              <p className="lb-my-label" style={{ color: accentColor }}>Your position</p>
+              {renderRow(myEntry, true)}
             </div>
           )}
 
-          <div className="leaderboard-table">
-            <div className="leaderboard-table-header">
-              <span>Rank</span><span>Name</span><span>Score</span><span>Correct</span><span>Time</span>
-            </div>
+          {/* Table */}
+          <div className="lb-table-wrap">
+            <div className="lb-table">
+              <div className="lb-table-head">
+                <span className="lb-col-rank">Rank</span>
+                <span className="lb-col-name">Name</span>
+                <span className="lb-col-score">Score</span>
+                <span className="lb-col-correct">Correct</span>
+                <span className="lb-col-time">Time</span>
+              </div>
 
-            {loading ? (
-              <div className="leaderboard-empty">
-                <p style={{ color: 'var(--muted)' }}>Loading rankings…</p>
-              </div>
-            ) : entries.length === 0 ? (
-              <div className="leaderboard-empty">
-                <p>No entries yet. Be the first to complete the challenge!</p>
-                <Link href={`/challenge/${monument.slug}/instructions`} className="button button-primary" style={{ marginTop: 16 }}>
-                  Start challenge <ArrowRight size={16} />
-                </Link>
-              </div>
-            ) : (
-              entries.map((entry) => {
-                const isMe = player && entry.player_id === player.id
-                return (
-                  <div
-                    key={entry.id}
-                    className={`leaderboard-row${isMe ? ' leaderboard-row--me' : ''}${entry.rank <= 3 ? ' leaderboard-row--top' : ''}`}
-                    style={isMe ? { borderLeftColor: accentColor } : undefined}
-                  >
-                    <span className="lb-rank">{getRankIcon(entry.rank) ?? `#${entry.rank}`}</span>
-                    <span className="lb-name">
-                      @{entry.display_name}
-                      {isMe && <span className="lb-you"> (you)</span>}
-                    </span>
-                    <span className="lb-score" style={{ color: accentColor }}>{entry.score}</span>
-                    <span className="lb-correct">{entry.correct_count}/10</span>
-                    <span className="lb-time">{formatTime(entry.completion_seconds)}</span>
-                  </div>
-                )
-              })
-            )}
+              {loading ? (
+                <div className="lb-empty"><p>Loading rankings…</p></div>
+              ) : entries.length === 0 ? (
+                <div className="lb-empty">
+                  <p>No entries yet. Be the first!</p>
+                  <Link href={`/challenge/${monument.slug}/instructions`} className="button button-primary" style={{ marginTop: 16 }}>
+                    Start challenge <ArrowRight size={16} />
+                  </Link>
+                </div>
+              ) : (
+                entries.map((entry) => renderRow(entry, !!(player && entry.player_id === player.id)))
+              )}
+            </div>
           </div>
 
-          <div className="leaderboard-cta-row">
+          {/* CTAs */}
+          <div className="lb-cta-row">
             <Link href={`/challenge/${monument.slug}/instructions`} className="button button-dark">
-              <RotateCcw size={16} /> Play challenge <ArrowRight size={16} />
+              <RotateCcw size={15} /> Play again <ArrowRight size={15} />
             </Link>
             <Link href="/monuments" className="text-link">
-              Explore more monuments <ArrowRight size={15} />
+              Explore more <ArrowRight size={14} />
             </Link>
           </div>
 
-          <div className="leaderboard-other">
-            <p style={{ color: 'var(--muted)', fontSize: 13 }}>Also available on Modexx</p>
-            {monument.slug === 'tinubu' ? (
-              <Link href="/leaderboard/sanwo-olu" className="text-link">Sanwo-Olu Challenge leaderboard <ArrowRight size={14} /></Link>
-            ) : (
-              <Link href="/leaderboard/tinubu" className="text-link">Tinubu Challenge leaderboard <ArrowRight size={14} /></Link>
-            )}
+          {/* Cross-link */}
+          <div className="lb-other">
+            <p className="lb-other-label">Also available on Modexx</p>
+            {monument.slug === 'tinubu'
+              ? <Link href="/leaderboard/sanwo-olu" className="text-link">Sanwo-Olu Challenge leaderboard <ArrowRight size={14} /></Link>
+              : <Link href="/leaderboard/tinubu" className="text-link">Tinubu Challenge leaderboard <ArrowRight size={14} /></Link>}
           </div>
+
         </div>
       </div>
     </main>

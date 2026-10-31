@@ -11,16 +11,17 @@ export const tinubuMonument: Monument = {
   intro:
     "A guided monument through the moments, movements, and milestones shaping a new chapter in Nigeria's story. Explore 10 connected chapters covering the presidency of Bola Ahmed Tinubu.",
   hotspots: [
-    { id: 'tinubu-h1', label: 'The Beginning', metaphor: 'Cap', chapter: 'Chapter 01', x: 48, y: 7, displayOrder: 1 },
-    { id: 'tinubu-h2', label: 'Economic Direction', metaphor: 'Glasses', chapter: 'Chapter 02', x: 63, y: 19, displayOrder: 2 },
-    { id: 'tinubu-h3', label: 'The Timeline', metaphor: 'Wristwatch', chapter: 'Chapter 03', x: 22, y: 44, displayOrder: 3 },
-    { id: 'tinubu-h4', label: 'Governance', metaphor: 'Torso / Agbada', chapter: 'Chapter 04', x: 50, y: 42, displayOrder: 4 },
-    { id: 'tinubu-h5', label: 'Decisions & Agreements', metaphor: 'Hands', chapter: 'Chapter 05', x: 76, y: 52, displayOrder: 5 },
-    { id: 'tinubu-h6', label: 'The Finer Details', metaphor: 'Ring / Accessory', chapter: 'Chapter 06', x: 24, y: 58, displayOrder: 6 },
-    { id: 'tinubu-h7', label: 'National Priorities', metaphor: 'Lapel / Pocket', chapter: 'Chapter 07', x: 62, y: 31, displayOrder: 7 },
-    { id: 'tinubu-h8', label: 'Connecting Policies', metaphor: 'Belt', chapter: 'Chapter 08', x: 50, y: 60, displayOrder: 8 },
-    { id: 'tinubu-h9', label: 'The National Journey', metaphor: 'Shoes', chapter: 'Chapter 09', x: 36, y: 84, displayOrder: 9 },
-    { id: 'tinubu-h10', label: 'Presidency in Context', metaphor: 'Full Figure', chapter: 'Chapter 10', x: 64, y: 74, displayOrder: 10 },
+    // Calibrated on tinubu.png (759×1024px) via /calibrate
+    { id: 'tinubu-h1',  label: 'The Beginning',          metaphor: 'Cap',          chapter: 'Chapter 01', x: 60, y: 6,  displayOrder: 1  },
+    { id: 'tinubu-h2',  label: 'Economic Direction',      metaphor: 'Glasses',      chapter: 'Chapter 02', x: 57, y: 10, displayOrder: 2  },
+    { id: 'tinubu-h3',  label: 'The Timeline',            metaphor: 'Wristwatch',   chapter: 'Chapter 03', x: 71, y: 40, displayOrder: 3  },
+    { id: 'tinubu-h4',  label: 'Governance',              metaphor: 'Torso/Agbada', chapter: 'Chapter 04', x: 42, y: 47, displayOrder: 4  },
+    { id: 'tinubu-h5',  label: 'Decisions & Agreements',  metaphor: 'Hands',        chapter: 'Chapter 05', x: 41, y: 17, displayOrder: 5  },
+    { id: 'tinubu-h6',  label: 'The Finer Details',       metaphor: 'Ring',         chapter: 'Chapter 06', x: 62, y: 43, displayOrder: 6  },
+    { id: 'tinubu-h7',  label: 'National Priorities',     metaphor: 'Lapel',        chapter: 'Chapter 07', x: 20, y: 15, displayOrder: 7  },
+    { id: 'tinubu-h8',  label: 'Connecting Policies',     metaphor: 'Belt',         chapter: 'Chapter 08', x: 58, y: 53, displayOrder: 8  },
+    { id: 'tinubu-h9',  label: 'The National Journey',    metaphor: 'Shoes',        chapter: 'Chapter 09', x: 48, y: 94, displayOrder: 9  },
+    { id: 'tinubu-h10', label: 'Presidency in Context',   metaphor: 'Full Figure',  chapter: 'Chapter 10', x: 90, y: 59, displayOrder: 10 },
   ],
   stories: [
     {

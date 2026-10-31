@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, CheckCircle2, X, ExternalLink, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
 import { getMonument } from '@/lib/data/index'
 import type { Monument, Hotspot, Story } from '@/lib/data/index'
 import {
-  getProfile,
   getExploredHotspots,
   markHotspotExplored,
 } from '@/lib/storage'
@@ -103,7 +102,6 @@ interface ExploreClientProps {
 }
 
 function ExploreClient({ monument }: ExploreClientProps) {
-  const router = useRouter()
   const [exploredIds, setExploredIds] = useState<string[]>([])
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null)
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
@@ -140,14 +138,8 @@ function ExploreClient({ monument }: ExploreClientProps) {
   const activeIdx = activeHotspot ? sortedHotspots.findIndex((h) => h.id === activeHotspot.id) : -1
   const activeStory = activeHotspot ? monument.stories.find((s) => s.hotspotId === activeHotspot.id) : undefined
 
-  // Gate challenge CTA: need a profile to start the quiz
-  function handleChallengeClick(e: React.MouseEvent) {
-    const profile = getProfile()
-    if (!profile) {
-      e.preventDefault()
-      router.push(`/signup?redirect=/challenge/${monument.slug}/instructions`)
-    }
-  }
+  // Gate challenge CTA: proxy already ensures user is authenticated
+  // so we can link directly to the challenge instructions
 
   return (
     <main className={`explore-page explore-page--full ${monument.accent}`}>
@@ -222,7 +214,6 @@ function ExploreClient({ monument }: ExploreClientProps) {
                 <Link
                   href={`/challenge/${monument.slug}/instructions`}
                   className="button button-dark explorer-challenge-btn"
-                  onClick={handleChallengeClick}
                 >
                   Begin the challenge <ArrowRight size={16} />
                 </Link>
@@ -238,15 +229,36 @@ function ExploreClient({ monument }: ExploreClientProps) {
         {/* Right: Portrait with hotspots */}
         <div className="explorer-portrait-wrap">
           <div className="explorer-portrait-container">
-            {/* Portrait placeholder — replace src with real portrait */}
-            <div className="explorer-portrait-bg" aria-label={`${monument.subject} portrait`}>
-              {/* Placeholder silhouette */}
-              <div className="portrait-silhouette" style={{ background: monument.accent === 'green' ? '#d6ead9' : '#d5eaf5' }}>
-                <div className="silhouette-figure" style={{ background: accentColor }} />
-                <span className="portrait-label">{monument.subject}</span>
-              </div>
+            <div
+              className="explorer-portrait-bg"
+              aria-label={`${monument.subject} portrait`}
+            >
+              {/* Real portrait image */}
+              {monument.slug === 'tinubu' ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/tinubu.png"
+                  alt="President Bola Ahmed Tinubu"
+                  className="portrait-image"
+                  draggable={false}
+                />
+              ) : monument.slug === 'sanwo-olu' ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/sanwo-olu.png"
+                  alt="Governor Babajide Sanwo-Olu"
+                  className="portrait-image"
+                  draggable={false}
+                />
+              ) : (
+                /* Fallback silhouette for monuments without a portrait */
+                <div className="portrait-silhouette" style={{ background: monument.accent === 'green' ? '#d6ead9' : '#d5eaf5' }}>
+                  <div className="silhouette-figure" style={{ background: accentColor }} />
+                  <span className="portrait-label">{monument.subject}</span>
+                </div>
+              )}
 
-              {/* Hotspot buttons */}
+              {/* Hotspot buttons — positioned over the image */}
               {sortedHotspots.map((hotspot) => {
                 const explored = exploredIds.includes(hotspot.id)
                 const active = activeHotspot?.id === hotspot.id
@@ -258,9 +270,9 @@ function ExploreClient({ monument }: ExploreClientProps) {
                       left: `${hotspot.x}%`,
                       top: `${hotspot.y}%`,
                       borderColor: accentColor,
-                      background: explored ? accentColor : '#fff',
+                      background: explored ? accentColor : 'rgba(255,255,255,0.92)',
                       color: explored ? '#fff' : accentColor,
-                      ...(active ? { transform: 'translate(-50%, -50%) scale(1.2)', zIndex: 10 } : {}),
+                      ...(active ? { transform: 'translate(-50%, -50%) scale(1.25)', zIndex: 10, boxShadow: `0 0 0 4px ${accentColor}33` } : {}),
                     }}
                     onClick={() => openHotspot(hotspot)}
                     aria-label={`Chapter ${hotspot.displayOrder}: ${hotspot.label}${explored ? ' — explored' : ''}`}
@@ -270,10 +282,24 @@ function ExploreClient({ monument }: ExploreClientProps) {
                   </button>
                 )
               })}
+
+              {/* Hotspot tooltip label on hover */}
+              {activeHotspot && (
+                <div
+                  className="hotspot-active-label"
+                  style={{
+                    left: `${activeHotspot.x}%`,
+                    top: `${activeHotspot.y + 5}%`,
+                    background: accentColor,
+                  }}
+                >
+                  {activeHotspot.metaphor}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Mobile chapter selector hint */}
+          {/* Mobile hint */}
           <p className="portrait-mobile-hint">Tap a numbered marker to explore that chapter</p>
         </div>
       </div>
@@ -298,19 +324,21 @@ function ExploreClient({ monument }: ExploreClientProps) {
 
 // ── Route component ────────────────────────────────────────────────────────
 
-export default function ExplorePage({ params }: { params: { slug: string } }) {
+export default function ExplorePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = React.use(params)
   const [monument, setMonument] = useState<Monument | null>(null)
   const [ready, setReady] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
-    const m = getMonument(params.slug)
+    const m = getMonument(slug)
     if (!m) {
-      window.location.replace('/monuments')
+      router.replace('/monuments')
       return
     }
     setMonument(m)
     setReady(true)
-  }, [params.slug])
+  }, [slug, router])
 
   if (!ready || !monument) {
     return (

@@ -1,21 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, CheckCircle2, XCircle, Trophy, Share2, RotateCcw } from 'lucide-react'
 import { getMonument } from '@/lib/data/index'
 import type { Monument, Question } from '@/lib/data/index'
-import {
-  getActiveAttempt,
-  clearActiveAttempt,
-  type QuizAttempt,
-} from '@/lib/storage'
+import { getActiveAttempt, clearActiveAttempt, type QuizAttempt } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
 import { calculateScore } from '@/lib/quiz'
 import ScorecardPreview from '@/components/ScorecardPreview'
 
-export default function ResultsPage({ params }: { params: { slug: string } }) {
+export default function ResultsPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = React.use(params)
   const router = useRouter()
   const [monument, setMonument] = useState<Monument | null>(null)
   const [attempt, setAttempt] = useState<QuizAttempt | null>(null)
@@ -29,41 +26,33 @@ export default function ResultsPage({ params }: { params: { slug: string } }) {
 
   useEffect(() => {
     const player = getClientSession()
-
-    const m = getMonument(params.slug)
+    const m = getMonument(slug)
     if (!m) { router.replace('/monuments'); return }
 
-    const a = getActiveAttempt(params.slug)
+    const a = getActiveAttempt(slug)
     if (!a || a.status !== 'completed') {
-      router.replace(`/challenge/${params.slug}/instructions`)
+      router.replace(`/challenge/${slug}/instructions`)
       return
     }
 
     if (player) {
       setDisplayName(player.displayName)
-      // Fetch rank from Supabase
-      fetch(`/api/leaderboard?slug=${params.slug}`)
+      fetch(`/api/leaderboard?slug=${slug}`)
         .then((r) => r.json())
         .then(({ entries }) => {
-          if (!entries) return
-          // rank entries
-          let rank = 1
+          if (!entries?.length) return
           const sorted = [...entries].sort((a: { score: number; correct_count: number; completion_seconds: number }, b: { score: number; correct_count: number; completion_seconds: number }) => {
             if (b.score !== a.score) return b.score - a.score
             if (b.correct_count !== a.correct_count) return b.correct_count - a.correct_count
             return a.completion_seconds - b.completion_seconds
           })
+          let r = 1
           for (let i = 0; i < sorted.length; i++) {
             if (i > 0) {
               const prev = sorted[i - 1]
-              if (sorted[i].score !== prev.score || sorted[i].correct_count !== prev.correct_count || sorted[i].completion_seconds !== prev.completion_seconds) {
-                rank = i + 1
-              }
+              if (sorted[i].score !== prev.score || sorted[i].correct_count !== prev.correct_count || sorted[i].completion_seconds !== prev.completion_seconds) r = i + 1
             }
-            if (sorted[i].player_id === player.id) {
-              setRank(rank)
-              break
-            }
+            if (sorted[i].player_id === player.id) { setRank(r); break }
           }
         })
         .catch(() => {})
@@ -78,7 +67,7 @@ export default function ResultsPage({ params }: { params: { slug: string } }) {
     setQuestions(qs)
     setResults(r)
     setReady(true)
-  }, [params.slug, router])
+  }, [slug, router])
 
   function handleReplay() {
     if (!monument) return
@@ -111,21 +100,16 @@ export default function ResultsPage({ params }: { params: { slug: string } }) {
   return (
     <main className="results-page">
       <header className="site-header detail-header">
-        <Link href={`/challenge/${monument.slug}/instructions`} className="text-link">
-          <ArrowLeft size={16} /> Challenge
-        </Link>
+        <Link href={`/challenge/${monument.slug}/instructions`} className="text-link"><ArrowLeft size={16} /> Challenge</Link>
         <Link href="/" className="wordmark"><span>mod</span>exx<span className="wordmark-dot">.</span></Link>
-        <Link href={`/leaderboard/${monument.slug}`} className="text-link" style={{ fontSize: 12 }}>
-          Leaderboard <ArrowRight size={14} />
-        </Link>
+        <Link href={`/leaderboard/${monument.slug}`} className="text-link" style={{ fontSize: 12 }}>Leaderboard <ArrowRight size={14} /></Link>
       </header>
 
       <div className="results-body">
         <div className="results-inner">
           <div className="results-hero" style={{ borderColor: accentColor }}>
             <p className="eyebrow" style={{ color: accentColor, justifyContent: 'center' }}>
-              <span className="eyebrow-line" style={{ background: accentColor }} />
-              {monument.name}
+              <span className="eyebrow-line" style={{ background: accentColor }} />{monument.name}
             </p>
             <p className="results-player">@{displayName}</p>
             <div className="results-score-display">
@@ -133,26 +117,17 @@ export default function ResultsPage({ params }: { params: { slug: string } }) {
               <span className="results-score-denom">/ 1,000</span>
             </div>
             <div className="results-meta-row">
-              <span>{attempt.correctCount}/10 correct</span>
-              <span>·</span>
+              <span>{attempt.correctCount}/10 correct</span><span>·</span>
               <span>{mins}m {secs}s</span>
               {rank && <><span>·</span><span>Rank #{rank}</span></>}
             </div>
           </div>
 
           <div className="results-actions">
-            <button className="button button-primary" onClick={() => setShowScorecard(true)}>
-              <Share2 size={16} /> Create scorecard
-            </button>
-            <button className="button" style={{ background: 'var(--soft)' }} onClick={handleShare}>
-              {copied ? 'Copied!' : <><Share2 size={16} /> Share result</>}
-            </button>
-            <button className="button" style={{ background: 'var(--soft)' }} onClick={handleReplay}>
-              <RotateCcw size={16} /> Replay
-            </button>
-            <Link href={`/leaderboard/${monument.slug}`} className="button" style={{ background: 'var(--soft)' }}>
-              <Trophy size={16} /> Leaderboard
-            </Link>
+            <button className="button button-primary" onClick={() => setShowScorecard(true)}><Share2 size={16} /> Create scorecard</button>
+            <button className="button" style={{ background: 'var(--soft)' }} onClick={handleShare}>{copied ? 'Copied!' : <><Share2 size={16} /> Share result</>}</button>
+            <button className="button" style={{ background: 'var(--soft)' }} onClick={handleReplay}><RotateCcw size={16} /> Replay</button>
+            <Link href={`/leaderboard/${monument.slug}`} className="button" style={{ background: 'var(--soft)' }}><Trophy size={16} /> Leaderboard</Link>
           </div>
 
           <div className="answer-review">
@@ -165,9 +140,7 @@ export default function ResultsPage({ params }: { params: { slug: string } }) {
                   <div key={q.id} className={`answer-item${isCorrect ? ' answer-correct' : ' answer-wrong'}`} style={{ borderLeftColor: isCorrect ? accentColor : '#d92e35' }}>
                     <div className="answer-item-header">
                       <span className="answer-q-number" style={{ color: isCorrect ? accentColor : '#d92e35' }}>Q{i + 1}</span>
-                      {isCorrect
-                        ? <CheckCircle2 size={18} style={{ color: accentColor }} aria-label="Correct" />
-                        : <XCircle size={18} style={{ color: '#d92e35' }} aria-label="Incorrect" />}
+                      {isCorrect ? <CheckCircle2 size={18} style={{ color: accentColor }} /> : <XCircle size={18} style={{ color: '#d92e35' }} />}
                       <span className="answer-score">{isCorrect ? '+100 pts' : '0 pts'}</span>
                     </div>
                     <p className="answer-question">{q.questionText}</p>
@@ -196,29 +169,15 @@ export default function ResultsPage({ params }: { params: { slug: string } }) {
           </div>
 
           <div className="results-bottom-cta">
-            <Link href={`/leaderboard/${monument.slug}`} className="button button-dark">
-              <Trophy size={16} /> View leaderboard <ArrowRight size={16} />
-            </Link>
-            <button className="button" style={{ background: 'var(--soft)' }} onClick={handleReplay}>
-              <RotateCcw size={16} /> Try again
-            </button>
-            <Link href="/monuments" className="text-link">
-              Explore more monuments <ArrowRight size={15} />
-            </Link>
+            <Link href={`/leaderboard/${monument.slug}`} className="button button-dark"><Trophy size={16} /> View leaderboard <ArrowRight size={16} /></Link>
+            <button className="button" style={{ background: 'var(--soft)' }} onClick={handleReplay}><RotateCcw size={16} /> Try again</button>
+            <Link href="/monuments" className="text-link">Explore more monuments <ArrowRight size={15} /></Link>
           </div>
         </div>
       </div>
 
       {showScorecard && (
-        <ScorecardPreview
-          monument={monument}
-          displayName={displayName}
-          score={attempt.score}
-          correctCount={attempt.correctCount}
-          completionSeconds={completionSeconds}
-          rank={rank}
-          onClose={() => setShowScorecard(false)}
-        />
+        <ScorecardPreview monument={monument} displayName={displayName} score={attempt.score} correctCount={attempt.correctCount} completionSeconds={completionSeconds} rank={rank} onClose={() => setShowScorecard(false)} />
       )}
     </main>
   )

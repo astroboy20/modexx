@@ -8,7 +8,7 @@ const PROTECTED_PREFIXES = [
   '/leaderboard',
 ]
 
-export function proxy(req: NextRequest) {
+export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
   const isProtected = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))
   if (!isProtected) return NextResponse.next()

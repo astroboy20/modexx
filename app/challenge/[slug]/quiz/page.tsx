@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react'
@@ -16,7 +16,8 @@ import {
 import { getClientSession } from '@/lib/session-client'
 import { selectQuestions, calculateScore } from '@/lib/quiz'
 
-export default function QuizPage({ params }: { params: { slug: string } }) {
+export default function QuizPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = React.use(params)
   const router = useRouter()
   const [monument, setMonument] = useState<Monument | null>(null)
   const [attempt, setAttempt] = useState<QuizAttempt | null>(null)
@@ -29,15 +30,14 @@ export default function QuizPage({ params }: { params: { slug: string } }) {
 
   useEffect(() => {
     const player = getClientSession()
-    if (!player) { router.replace(`/signin?redirect=/challenge/${params.slug}/quiz`); return }
+    if (!player) { router.replace(`/signin?redirect=/challenge/${slug}/quiz`); return }
 
-    const m = getMonument(params.slug)
+    const m = getMonument(slug)
     if (!m) { router.replace('/monuments'); return }
 
-    // Already completed → go to results
-    const existing = getActiveAttempt(params.slug)
+    const existing = getActiveAttempt(slug)
     if (existing?.status === 'completed') {
-      router.replace(`/challenge/${params.slug}/results`)
+      router.replace(`/challenge/${slug}/results`)
       return
     }
 
@@ -52,7 +52,7 @@ export default function QuizPage({ params }: { params: { slug: string } }) {
       qs = selectQuestions(m.questions, 10)
       currentAttempt = {
         id: generateId(),
-        monumentSlug: params.slug,
+        monumentSlug: slug,
         playerId: player.id,
         assignedQuestionIds: qs.map((q) => q.id),
         answers: {},
@@ -69,7 +69,7 @@ export default function QuizPage({ params }: { params: { slug: string } }) {
     setAttempt(currentAttempt)
     setQuestions(qs)
     setReady(true)
-  }, [params.slug, router])
+  }, [slug, router])
 
   function selectAnswer(qId: string, idx: number) {
     if (!attempt) return
@@ -112,29 +112,17 @@ export default function QuizPage({ params }: { params: { slug: string } }) {
     saveAttempt(completed)
     addToHistory(completed)
 
-    // Submit to Supabase leaderboard via API (fire and forget — don't block navigation)
     fetch('/api/leaderboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        monumentSlug: monument.slug,
-        score,
-        correctCount,
-        completionSeconds,
-      }),
-    }).catch(() => {
-      // Silently fail — score is saved locally too
-    })
+      body: JSON.stringify({ monumentSlug: monument.slug, score, correctCount, completionSeconds }),
+    }).catch(() => {})
 
     router.push(`/challenge/${monument.slug}/results`)
   }
 
   if (!ready || !monument || !attempt || questions.length === 0) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
-        <p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading challenge…</p>
-      </div>
-    )
+    return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading challenge…</p></div>
   }
 
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
@@ -151,10 +139,7 @@ export default function QuizPage({ params }: { params: { slug: string } }) {
           <div className="confirm-box">
             <AlertTriangle size={28} style={{ color: '#d92e35', marginBottom: 12 }} />
             <h3>Submit with unanswered questions?</h3>
-            <p>
-              You have {questions.filter((q) => answers[q.id] === undefined).length} unanswered question(s).
-              Unanswered questions score 0 points.
-            </p>
+            <p>You have {questions.filter((q) => answers[q.id] === undefined).length} unanswered question(s). Unanswered questions score 0 points.</p>
             <div className="confirm-actions">
               <button className="button button-dark" onClick={() => { setShowConfirm(false); finalSubmit() }}>Submit anyway</button>
               <button className="button" style={{ background: 'var(--soft)', color: 'var(--ink)' }} onClick={() => setShowConfirm(false)}>Go back</button>
@@ -223,13 +208,9 @@ export default function QuizPage({ params }: { params: { slug: string } }) {
             <ArrowLeft size={16} /> Previous
           </button>
           {isLast ? (
-            <button className="button button-primary" onClick={handleSubmit}>
-              Submit challenge <ArrowRight size={16} />
-            </button>
+            <button className="button button-primary" onClick={handleSubmit}>Submit challenge <ArrowRight size={16} /></button>
           ) : (
-            <button className="button button-dark" onClick={handleNext}>
-              Next question <ArrowRight size={16} />
-            </button>
+            <button className="button button-dark" onClick={handleNext}>Next question <ArrowRight size={16} /></button>
           )}
         </div>
       </div>

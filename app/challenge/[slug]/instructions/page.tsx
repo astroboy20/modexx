@@ -1,21 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Lock, CheckCircle2, HelpCircle, Star, Trophy } from 'lucide-react'
 import { getMonument } from '@/lib/data/index'
 import type { Monument } from '@/lib/data/index'
-import { getProfile, getExploredHotspots, saveProfile, generateId } from '@/lib/storage'
+import { getExploredHotspots } from '@/lib/storage'
 
-function ensureSession(): void {
-  if (typeof window === 'undefined') return
-  if (!getProfile()) {
-    saveProfile({ id: generateId(), displayName: 'Explorer', createdAt: new Date().toISOString() })
-  }
-}
-
-export default function InstructionsPage({ params }: { params: { slug: string } }) {
+export default function InstructionsPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = React.use(params)
   const router = useRouter()
   const [monument, setMonument] = useState<Monument | null>(null)
   const [exploredCount, setExploredCount] = useState(0)
@@ -23,16 +17,15 @@ export default function InstructionsPage({ params }: { params: { slug: string } 
   const [locked, setLocked] = useState(true)
 
   useEffect(() => {
-    ensureSession()
-    const m = getMonument(params.slug)
+    const m = getMonument(slug)
     if (!m) { router.replace('/monuments'); return }
-    const explored = getExploredHotspots(params.slug)
+    const explored = getExploredHotspots(slug)
     const count = explored.length
     setMonument(m)
     setExploredCount(count)
     setLocked(count < m.hotspots.length)
     setReady(true)
-  }, [params.slug, router])
+  }, [slug, router])
 
   if (!ready || !monument) {
     return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading…</p></div>
