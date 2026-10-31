@@ -140,9 +140,6 @@ export default function LandingClient({ user }: Props) {
               </>
             ) : (
               <>
-                <Link href="/signin" className="desktop-nav-link">
-                  Sign in
-                </Link>
                 <Link href={monumentsHref} className="desktop-cta-btn">
                   Get started <ArrowRight size={14} />
                 </Link>
@@ -427,7 +424,6 @@ export default function LandingClient({ user }: Props) {
           <a href="#how-it-works">How it works</a>
           <Link href={monumentsHref}>Monuments</Link>
           <a href="#for">Use cases</a>
-          {!user && <Link href="/signin">Sign in</Link>}
         </div>
         <small>© 2026 Modexx. Built for meaningful stories.</small>
       </footer>

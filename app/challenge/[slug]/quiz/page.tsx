@@ -15,6 +15,7 @@ import {
 } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
 import { selectQuestions, calculateScore } from '@/lib/quiz'
+import SiteHeader from '@/components/SiteHeader'
 
 export default function QuizPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = React.use(params)
@@ -148,11 +149,11 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
         </div>
       )}
 
-      <header className="site-header detail-header quiz-header">
-        <span className="quiz-header-label" style={{ color: accentColor }}>{monument.name}</span>
-        <Link href="/" className="wordmark"><span>mod</span>exx<span className="wordmark-dot">.</span></Link>
-        <span className="quiz-header-progress">{answeredCount}/{questions.length} answered</span>
-      </header>
+      <SiteHeader
+        className="detail-header quiz-header"
+        left={<span className="quiz-header-label" style={{ color: accentColor }}>{monument.name}</span>}
+        right={<span className="quiz-header-progress">{answeredCount}/{questions.length} answered</span>}
+      />
 
       <div className="quiz-body">
         <div className="quiz-progress-wrap">
@@ -204,13 +205,25 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
         </div>
 
         <div className="quiz-nav">
-          <button className="button" style={{ background: 'var(--soft)', color: 'var(--ink)' }} onClick={handlePrev} disabled={currentIdx === 0}>
+          <button className="button quiz-nav-prev" style={{ background: 'var(--soft)', color: 'var(--ink)' }} onClick={handlePrev} disabled={currentIdx === 0}>
             <ArrowLeft size={16} /> Previous
           </button>
           {isLast ? (
-            <button className="button button-primary" onClick={handleSubmit}>Submit challenge <ArrowRight size={16} /></button>
+            <button
+              className="button quiz-nav-submit"
+              style={{ background: accentColor, color: '#fff' }}
+              onClick={handleSubmit}
+            >
+              Submit challenge <ArrowRight size={16} />
+            </button>
           ) : (
-            <button className="button button-dark" onClick={handleNext}>Next question <ArrowRight size={16} /></button>
+            <button
+              className="button quiz-nav-next"
+              style={{ background: accentColor, color: '#fff' }}
+              onClick={handleNext}
+            >
+              Next question <ArrowRight size={16} />
+            </button>
           )}
         </div>
       </div>

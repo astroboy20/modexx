@@ -10,6 +10,7 @@ import { getActiveAttempt, clearActiveAttempt, type QuizAttempt } from '@/lib/st
 import { getClientSession } from '@/lib/session-client'
 import { calculateScore } from '@/lib/quiz'
 import ScorecardPreview from '@/components/ScorecardPreview'
+import SiteHeader from '@/components/SiteHeader'
 
 export default function ResultsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = React.use(params)
@@ -99,11 +100,11 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
 
   return (
     <main className="results-page">
-      <header className="site-header detail-header">
-        <Link href={`/challenge/${monument.slug}/instructions`} className="text-link"><ArrowLeft size={16} /> Challenge</Link>
-        <Link href="/" className="wordmark"><span>mod</span>exx<span className="wordmark-dot">.</span></Link>
-        <Link href={`/leaderboard/${monument.slug}`} className="text-link" style={{ fontSize: 12 }}>Leaderboard <ArrowRight size={14} /></Link>
-      </header>
+      <SiteHeader
+        className="detail-header"
+        left={<Link href={`/challenge/${monument.slug}/instructions`} className="text-link"><ArrowLeft size={16} /> Challenge</Link>}
+        right={<Link href={`/leaderboard/${monument.slug}`} className="text-link" style={{ fontSize: 12 }}>Leaderboard <ArrowRight size={14} /></Link>}
+      />
 
       <div className="results-body">
         <div className="results-inner">

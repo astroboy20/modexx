@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowLeft, ArrowRight, LockKeyhole, Play, Trophy } from 'lucide-react'
 import { notFound } from 'next/navigation'
 import { getMonument } from '@/lib/data/index'
+import SiteHeader from '@/components/SiteHeader'
 
 export function generateStaticParams() {
   return [{ slug: 'tinubu' }, { slug: 'sanwo-olu' }]
@@ -18,13 +19,11 @@ export default async function MonumentPage({ params }: { params: Promise<{ slug:
 
   return (
     <main className={`monument-detail ${accentClass}`}>
-      <header className="site-header detail-header">
-        <Link href="/monuments" className="text-link"><ArrowLeft size={16} /> All monuments</Link>
-        <Link href="/" className="wordmark"><span>mod</span>exx<span className="wordmark-dot">.</span></Link>
-        <Link href={`/leaderboard/${slug}`} className="text-link" style={{ fontSize: 12 }}>
-          Leaderboard <ArrowRight size={14} />
-        </Link>
-      </header>
+      <SiteHeader
+        className="detail-header"
+        left={<Link href="/monuments" className="text-link"><ArrowLeft size={16} /> All monuments</Link>}
+        right={<Link href={`/leaderboard/${slug}`} className="text-link" style={{ fontSize: 12 }}>Leaderboard <ArrowRight size={14} /></Link>}
+      />
 
       <section className="detail-hero">
         <div className="detail-copy">

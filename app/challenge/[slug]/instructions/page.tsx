@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Lock, CheckCircle2, HelpCircle, Star, Trophy } f
 import { getMonument } from '@/lib/data/index'
 import type { Monument } from '@/lib/data/index'
 import { getExploredHotspots } from '@/lib/storage'
+import SiteHeader from '@/components/SiteHeader'
 
 export default function InstructionsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = React.use(params)
@@ -37,15 +38,11 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
 
   return (
     <main className="challenge-page">
-      <header className="site-header detail-header">
-        <Link href={`/monuments/${monument.slug}/explore`} className="text-link">
-          <ArrowLeft size={16} /> Back to monument
-        </Link>
-        <Link href="/" className="wordmark"><span>mod</span>exx<span className="wordmark-dot">.</span></Link>
-        <Link href={`/leaderboard/${monument.slug}`} className="text-link" style={{ fontSize: 12 }}>
-          Leaderboard <ArrowRight size={14} />
-        </Link>
-      </header>
+      <SiteHeader
+        className="detail-header"
+        left={<Link href={`/monuments/${monument.slug}/explore`} className="text-link"><ArrowLeft size={16} /> Back to monument</Link>}
+        right={<Link href={`/leaderboard/${monument.slug}`} className="text-link" style={{ fontSize: 12 }}>Leaderboard <ArrowRight size={14} /></Link>}
+      />
 
       <div className="instructions-body">
         <div className="instructions-inner">
@@ -122,9 +119,6 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
             </Link>
           </div>
 
-          <p className="instructions-demo-note">
-            Frontend prototype — scoring is calculated locally in your browser.
-          </p>
         </div>
       </div>
     </main>

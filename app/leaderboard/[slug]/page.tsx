@@ -8,6 +8,7 @@ import { getMonument } from '@/lib/data/index'
 import type { Monument } from '@/lib/data/index'
 import { fetchLeaderboard, type RankedEntry } from '@/lib/leaderboard'
 import { getClientSession } from '@/lib/session-client'
+import SiteHeader from '@/components/SiteHeader'
 
 export default function LeaderboardPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = React.use(params)
@@ -74,14 +75,10 @@ export default function LeaderboardPage({ params }: { params: Promise<{ slug: st
 
   return (
     <main className="leaderboard-page">
-      {/* Header — just back + wordmark, no cramped monument name */}
-      <header className="site-header lb-header">
-        <Link href={`/monuments/${monument.slug}`} className="text-link">
-          <ArrowLeft size={16} /> Monument
-        </Link>
-        <Link href="/" className="wordmark"><span>mod</span>exx<span className="wordmark-dot">.</span></Link>
-        <span style={{ width: 90 }} />
-      </header>
+      <SiteHeader
+        className="lb-header"
+        left={<Link href={`/monuments/${monument.slug}`} className="text-link"><ArrowLeft size={16} /> Monument</Link>}
+      />
 
       <div className="leaderboard-body">
         <div className="leaderboard-inner">

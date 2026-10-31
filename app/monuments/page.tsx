@@ -1,14 +1,15 @@
 import Link from 'next/link'
 import { ArrowRight, ArrowUpRight, Trophy } from 'lucide-react'
 import { allMonuments } from '@/lib/data/index'
+import SiteHeader from '@/components/SiteHeader'
 
 export default function MonumentsPage() {
   return (
     <main className="directory">
-      <header className="site-header directory-header">
-        <Link href="/" className="wordmark"><span>mod</span>exx<span className="wordmark-dot">.</span></Link>
-        <Link className="text-link" href="/">Back to Modexx <ArrowRight size={16} /></Link>
-      </header>
+      <SiteHeader
+        className="directory-header"
+        left={<Link href="/" className="text-link" style={{ fontSize: 13 }}><ArrowRight size={15} style={{ transform: 'rotate(180deg)' }} /> Home</Link>}
+      />
 
       <section className="directory-hero">
         <p className="eyebrow"><span className="eyebrow-line" /> The collection</p>

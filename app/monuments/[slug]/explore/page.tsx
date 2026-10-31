@@ -10,6 +10,7 @@ import {
   getExploredHotspots,
   markHotspotExplored,
 } from '@/lib/storage'
+import SiteHeader from '@/components/SiteHeader'
 
 // ── Story Panel ────────────────────────────────────────────────────────────
 
@@ -144,13 +145,11 @@ function ExploreClient({ monument }: ExploreClientProps) {
   return (
     <main className={`explore-page explore-page--full ${monument.accent}`}>
       {/* Header */}
-      <header className="site-header detail-header explore-fixed-header">
-        <Link href={`/monuments/${monument.slug}`} className="text-link">
-          <ArrowLeft size={16} /> Monument
-        </Link>
-        <Link href="/" className="wordmark"><span>mod</span>exx<span className="wordmark-dot">.</span></Link>
-        <span className="detail-index">{exploredIds.length} / {monument.hotspots.length} explored</span>
-      </header>
+      <SiteHeader
+        className="detail-header explore-fixed-header"
+        left={<Link href={`/monuments/${monument.slug}`} className="text-link"><ArrowLeft size={16} /> Monument</Link>}
+        right={<span style={{ fontSize: 13, color: 'var(--muted)' }}>{exploredIds.length} / {monument.hotspots.length} explored</span>}
+      />
 
       <div className="explorer-layout">
         {/* Left: Info + chapter list */}

@@ -3,49 +3,63 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, User, LogIn } from 'lucide-react'
+import { ArrowLeft, ArrowRight, User, LogIn, AlertCircle } from 'lucide-react'
 
-function AuthForm() {
+// ── Constants & helpers ────────────────────────────────────────────────────
+
+const MAX_LEN = 20
+const MIN_LEN = 2
+const VALID_PATTERN = /^[a-zA-Z0-9_\-. ]+$/
+
+function validate(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return 'Please enter a display name.'
+  if (trimmed.length < MIN_LEN) return `Must be at least ${MIN_LEN} characters.`
+  if (trimmed.length > MAX_LEN) return `Max ${MAX_LEN} characters.`
+  if (!VALID_PATTERN.test(trimmed)) return 'Letters, numbers, spaces, _ - . only.'
+  return ''
+}
+
+// ── Spinner ────────────────────────────────────────────────────────────────
+
+function Spinner() {
+  return <span className="spinner spinner--sm spinner--white" aria-hidden />
+}
+
+// ── Sign-up tab ────────────────────────────────────────────────────────────
+
+function SignUpTab({ redirect }: { redirect: string }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const redirect = searchParams.get('redirect') || '/monuments'
-
-  const [tab, setTab] = useState<'signup' | 'signin'>('signup')
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState('')
+  const [touched, setTouched] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const MAX_LEN = 20
+  const inlineError = touched ? validate(displayName) : ''
+  const isValid = !!displayName.trim() && !validate(displayName)
+  const shownError = error || inlineError
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setDisplayName(e.target.value.slice(0, MAX_LEN + 1))
-    setError('')
+    if (error) setError('')
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const name = displayName.trim()
-    if (!name) { setError('Please enter a display name.'); return }
-    if (name.length < 2) { setError('Must be at least 2 characters.'); return }
-    if (name.length > MAX_LEN) { setError(`Max ${MAX_LEN} characters.`); return }
-    if (!/^[a-zA-Z0-9_\-. ]+$/.test(name)) { setError('Letters, numbers, spaces, _ - . only.'); return }
+    setTouched(true)
+    const err = validate(displayName)
+    if (err) { setError(err); return }
 
     setLoading(true)
     setError('')
-
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: tab, displayName: name }),
+        body: JSON.stringify({ action: 'signup', displayName: displayName.trim() }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setError(data.error || 'Something went wrong.')
-        setLoading(false)
-        return
-      }
-      // Session cookie is set by the server — navigate to destination
+      if (!res.ok) { setError(data.error || 'Something went wrong.'); setLoading(false); return }
       router.push(redirect)
       router.refresh()
     } catch {
@@ -53,6 +67,135 @@ function AuthForm() {
       setLoading(false)
     }
   }
+
+  return (
+    <form onSubmit={handleSubmit} noValidate className="signup-form">
+      <div className="form-field">
+        <label htmlFor="su-displayName" className="form-label">Display name</label>
+        <div className="form-input-wrap">
+          <input
+            id="su-displayName"
+            type="text"
+            autoComplete="off"
+            autoFocus
+            value={displayName}
+            onChange={handleChange}
+            onBlur={() => setTouched(true)}
+            maxLength={MAX_LEN + 1}
+            className={`form-input${shownError ? ' form-input--error' : isValid ? ' form-input--valid' : ''}`}
+            placeholder="e.g. Adaeze_K"
+            aria-describedby={shownError ? 'su-name-error' : 'su-name-hint'}
+            aria-invalid={!!shownError}
+          />
+          {displayName.length > 0 && (
+            <span
+              className={`char-count${displayName.length > MAX_LEN ? ' char-count--over' : displayName.length >= MAX_LEN * 0.8 ? ' char-count--warn' : ''}`}
+              aria-live="polite"
+            >
+              {displayName.length}/{MAX_LEN}
+            </span>
+          )}
+        </div>
+        {shownError ? (
+          <p id="su-name-error" className="form-error" role="alert">
+            <AlertCircle size={12} aria-hidden /> {shownError}
+          </p>
+        ) : (
+          <p id="su-name-hint" className="form-hint">Letters, numbers, spaces, _ - . allowed · Max {MAX_LEN} characters</p>
+        )}
+      </div>
+
+      <button type="submit" className="button button-primary signup-submit" disabled={loading}>
+        {loading ? <><Spinner /> Creating account…</> : <>Create account <ArrowRight size={16} /></>}
+      </button>
+    </form>
+  )
+}
+
+// ── Sign-in tab ────────────────────────────────────────────────────────────
+
+function SignInTab({ redirect }: { redirect: string }) {
+  const router = useRouter()
+  const [displayName, setDisplayName] = useState('')
+  const [error, setError] = useState('')
+  const [touched, setTouched] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  const inlineError = touched ? validate(displayName) : ''
+  const isValid = !!displayName.trim() && !validate(displayName)
+  const shownError = error || inlineError
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setDisplayName(e.target.value.slice(0, MAX_LEN + 1))
+    if (error) setError('')
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setTouched(true)
+    const err = validate(displayName)
+    if (err) { setError(err); return }
+
+    setLoading(true)
+    setError('')
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'signin', displayName: displayName.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Something went wrong.'); setLoading(false); return }
+      router.push(redirect)
+      router.refresh()
+    } catch {
+      setError('Network error. Please try again.')
+      setLoading(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} noValidate className="signup-form">
+      <div className="form-field">
+        <label htmlFor="si-displayName" className="form-label">Display name</label>
+        <div className="form-input-wrap">
+          <input
+            id="si-displayName"
+            type="text"
+            autoComplete="off"
+            autoFocus
+            value={displayName}
+            onChange={handleChange}
+            onBlur={() => setTouched(true)}
+            maxLength={MAX_LEN + 1}
+            className={`form-input${shownError ? ' form-input--error' : isValid ? ' form-input--valid' : ''}`}
+            placeholder="Your display name"
+            aria-describedby={shownError ? 'si-name-error' : 'si-name-hint'}
+            aria-invalid={!!shownError}
+          />
+        </div>
+        {shownError ? (
+          <p id="si-name-error" className="form-error" role="alert">
+            <AlertCircle size={12} aria-hidden /> {shownError}
+          </p>
+        ) : (
+          <p id="si-name-hint" className="form-hint">Enter the exact name you used when you signed up</p>
+        )}
+      </div>
+
+      <button type="submit" className="button button-primary signup-submit" disabled={loading}>
+        {loading ? <><Spinner /> Signing in…</> : <>Sign in <ArrowRight size={16} /></>}
+      </button>
+    </form>
+  )
+}
+
+// ── Shell (tabs + layout) ──────────────────────────────────────────────────
+
+function AuthForm() {
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect') || '/monuments'
+  const [tab, setTab] = useState<'signup' | 'signin'>('signup')
 
   return (
     <main className="signup-page">
@@ -65,22 +208,22 @@ function AuthForm() {
 
       <div className="signup-body">
         <div className="signup-card">
+
           <div className="signup-icon">
-            {tab === 'signup' ? <User size={28} /> : <LogIn size={28} />}
+            {tab === 'signup' ? <User size={26} /> : <LogIn size={26} />}
           </div>
 
-          {/* Tabs */}
           <div className="auth-tabs">
             <button
               className={`auth-tab${tab === 'signup' ? ' auth-tab--active' : ''}`}
-              onClick={() => { setTab('signup'); setError('') }}
+              onClick={() => setTab('signup')}
               type="button"
             >
               Create account
             </button>
             <button
               className={`auth-tab${tab === 'signin' ? ' auth-tab--active' : ''}`}
-              onClick={() => { setTab('signin'); setError('') }}
+              onClick={() => setTab('signin')}
               type="button"
             >
               Sign in
@@ -93,6 +236,7 @@ function AuthForm() {
               <p className="signup-lede">
                 This name appears on the leaderboard and your scorecard. Pick something you&apos;re happy to be known by.
               </p>
+              <SignUpTab redirect={redirect} />
             </>
           ) : (
             <>
@@ -100,72 +244,22 @@ function AuthForm() {
               <p className="signup-lede">
                 Enter the display name you signed up with to restore your profile and scores.
               </p>
+              <SignInTab redirect={redirect} />
             </>
           )}
-
-          <form onSubmit={handleSubmit} noValidate className="signup-form">
-            <div className="form-field">
-              <label htmlFor="displayName" className="form-label">Display name</label>
-              <div className="form-input-wrap">
-                <input
-                  id="displayName"
-                  type="text"
-                  autoComplete="off"
-                  autoFocus
-                  value={displayName}
-                  onChange={handleChange}
-                  maxLength={MAX_LEN + 1}
-                  className={`form-input${error ? ' form-input--error' : ''}`}
-                  placeholder={tab === 'signup' ? 'e.g. Adaeze_K' : 'Your display name'}
-                  aria-describedby={error ? 'name-error' : 'name-hint'}
-                  aria-invalid={!!error}
-                />
-                {tab === 'signup' && (
-                  <span className="char-count" aria-live="polite">
-                    {displayName.length}/{MAX_LEN}
-                  </span>
-                )}
-              </div>
-              {error ? (
-                <p id="name-error" className="form-error" role="alert">{error}</p>
-              ) : (
-                <p id="name-hint" className="form-hint">
-                  {tab === 'signup'
-                    ? 'Letters, numbers, spaces, _ - . allowed · Max 20 characters'
-                    : 'Enter the exact name you used when you signed up'}
-                </p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              className="button button-primary signup-submit"
-              disabled={loading || !displayName.trim()}
-            >
-              {loading
-                ? tab === 'signup' ? 'Creating account…' : 'Signing in…'
-                : tab === 'signup'
-                ? <>Create account <ArrowRight size={16} /></>
-                : <>Sign in <ArrowRight size={16} /></>}
-            </button>
-          </form>
 
           <p className="auth-switch">
             {tab === 'signup' ? (
               <>Already have an account?{' '}
-                <button className="auth-switch-btn" onClick={() => { setTab('signin'); setError('') }}>Sign in</button>
+                <button className="auth-switch-btn" type="button" onClick={() => setTab('signin')}>Sign in</button>
               </>
             ) : (
               <>New to Modexx?{' '}
-                <button className="auth-switch-btn" onClick={() => { setTab('signup'); setError('') }}>Create account</button>
+                <button className="auth-switch-btn" type="button" onClick={() => setTab('signup')}>Create account</button>
               </>
             )}
           </p>
 
-          <p className="signup-note">
-            Your display name is stored server-side for this prototype session.
-            No passwords or personal data are collected.
-          </p>
         </div>
       </div>
     </main>

@@ -3,8 +3,12 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, User } from 'lucide-react'
+import { ArrowLeft, ArrowRight, User, AlertCircle } from 'lucide-react'
 import { saveProfile, generateId } from '@/lib/storage'
+
+function Spinner() {
+  return <span className="spinner spinner--sm spinner--white" aria-hidden />
+}
 
 function SignUpForm() {
   const router = useRouter()
@@ -13,6 +17,7 @@ function SignUpForm() {
 
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState('')
+  const [touched, setTouched] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const MAX_LEN = 20
@@ -20,21 +25,30 @@ function SignUpForm() {
   const VALID_PATTERN = /^[a-zA-Z0-9_\-. ]+$/
 
   function validate(value: string): string {
-    if (!value.trim()) return 'Please choose a display name.'
-    if (value.trim().length < MIN_LEN) return `Must be at least ${MIN_LEN} characters.`
-    if (value.trim().length > MAX_LEN) return `Max ${MAX_LEN} characters.`
-    if (!VALID_PATTERN.test(value)) return 'Letters, numbers, spaces, _ - . only.'
+    const trimmed = value.trim()
+    if (!trimmed) return 'Please choose a display name.'
+    if (trimmed.length < MIN_LEN) return `Must be at least ${MIN_LEN} characters.`
+    if (trimmed.length > MAX_LEN) return `Max ${MAX_LEN} characters.`
+    if (!VALID_PATTERN.test(trimmed)) return 'Letters, numbers, spaces, _ - . only.'
     return ''
   }
+
+  const validationError = touched ? validate(displayName) : ''
+  const isValid = !validate(displayName)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const val = e.target.value.slice(0, MAX_LEN + 1)
     setDisplayName(val)
-    if (error) setError(validate(val))
+    if (error) setError('')
+  }
+
+  function handleBlur() {
+    setTouched(true)
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setTouched(true)
     const err = validate(displayName)
     if (err) { setError(err); return }
     setLoading(true)
@@ -79,18 +93,23 @@ function SignUpForm() {
                   autoFocus
                   value={displayName}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   maxLength={MAX_LEN + 1}
-                  className={`form-input${error ? ' form-input--error' : ''}`}
+                  className={`form-input${(error || validationError) ? ' form-input--error' : touched && isValid && displayName.trim() ? ' form-input--valid' : ''}`}
                   placeholder="e.g. Adaeze_K"
-                  aria-describedby={error ? 'name-error' : 'name-hint'}
-                  aria-invalid={!!error}
+                  aria-describedby={(error || validationError) ? 'name-error' : 'name-hint'}
+                  aria-invalid={!!(error || validationError)}
                 />
-                <span className="char-count" aria-live="polite">
-                  {displayName.length}/{MAX_LEN}
-                </span>
+                {displayName.length > 0 && (
+                  <span className={`char-count${displayName.length > MAX_LEN ? ' char-count--over' : displayName.length >= MAX_LEN * 0.8 ? ' char-count--warn' : ''}`} aria-live="polite">
+                    {displayName.length}/{MAX_LEN}
+                  </span>
+                )}
               </div>
-              {error ? (
-                <p id="name-error" className="form-error" role="alert">{error}</p>
+              {(error || validationError) ? (
+                <p id="name-error" className="form-error" role="alert">
+                  <AlertCircle size={12} aria-hidden /> {error || validationError}
+                </p>
               ) : (
                 <p id="name-hint" className="form-hint">Letters, numbers, spaces, _ - . allowed · Max {MAX_LEN} characters</p>
               )}
@@ -99,9 +118,9 @@ function SignUpForm() {
             <button
               type="submit"
               className="button button-primary signup-submit"
-              disabled={loading || !displayName.trim()}
+              disabled={loading}
             >
-              {loading ? 'Creating profile…' : <>Enter the experience <ArrowRight size={16} /></>}
+              {loading ? <><Spinner /> Creating profile…</> : <>Enter the experience <ArrowRight size={16} /></>}
             </button>
           </form>
 
