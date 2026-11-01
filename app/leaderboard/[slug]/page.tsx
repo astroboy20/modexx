@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Trophy, Medal, RotateCcw } from 'lucide-react'
+import { toast } from 'sonner'
 import { getMonument } from '@/lib/data/index'
 import type { Monument } from '@/lib/data/index'
 import { fetchLeaderboard, type RankedEntry } from '@/lib/leaderboard'
@@ -31,11 +32,18 @@ export default function LeaderboardPage({ params }: { params: Promise<{ slug: st
       setEntries(ranked.slice(0, 10))
       setMyEntry(mine)
       setLoading(false)
+    }).catch(() => {
+      toast.error('Failed to load rankings. Please refresh.')
+      setLoading(false)
     })
   }, [slug, router])
 
   if (!ready || !monument) {
-    return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading…</p></div>
+    return (
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+        <span className="spinner spinner--lg" aria-label="Loading…" />
+      </div>
+    )
   }
 
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
@@ -118,7 +126,9 @@ export default function LeaderboardPage({ params }: { params: Promise<{ slug: st
               </div>
 
               {loading ? (
-                <div className="lb-empty"><p>Loading rankings…</p></div>
+                <div className="lb-empty">
+                  <span className="spinner spinner--md" style={{ color: accentColor }} aria-label="Loading rankings…" />
+                </div>
               ) : entries.length === 0 ? (
                 <div className="lb-empty">
                   <p>No entries yet. Be the first!</p>

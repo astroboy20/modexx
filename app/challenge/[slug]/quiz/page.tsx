@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { getMonument } from '@/lib/data/index'
 import type { Monument, Question } from '@/lib/data/index'
 import {
@@ -28,6 +29,7 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
   const [selectedNow, setSelectedNow] = useState<number | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
   const [ready, setReady] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     const player = getClientSession()
@@ -97,6 +99,8 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
     const player = getClientSession()
     if (!player) return
 
+    setSubmitting(true)
+
     const { score, correctCount } = calculateScore(questions, answers)
     const now = new Date()
     const completionSeconds = Math.round((now.getTime() - new Date(attempt.startedAt).getTime()) / 1000)
@@ -117,13 +121,19 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ monumentSlug: monument.slug, score, correctCount, completionSeconds }),
-    }).catch(() => {})
+    }).catch(() => {
+      toast.error('Score saved locally, but failed to post to leaderboard.')
+    })
 
     router.push(`/challenge/${monument.slug}/results`)
   }
 
   if (!ready || !monument || !attempt || questions.length === 0) {
-    return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading challenge…</p></div>
+    return (
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+        <span className="spinner spinner--lg" aria-label="Loading challenge…" />
+      </div>
+    )
   }
 
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
@@ -213,8 +223,11 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
               className="button quiz-nav-submit"
               style={{ background: accentColor, color: '#fff' }}
               onClick={handleSubmit}
+              disabled={submitting}
             >
-              Submit challenge <ArrowRight size={16} />
+              {submitting
+                ? <><span className="spinner spinner--sm spinner--white" aria-hidden /> Submitting…</>
+                : <>Submit challenge <ArrowRight size={16} /></>}
             </button>
           ) : (
             <button

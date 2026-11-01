@@ -342,7 +342,7 @@ export default function ExplorePage({ params }: { params: Promise<{ slug: string
   if (!ready || !monument) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading…</p>
+        <span className="spinner spinner--lg" aria-label="Loading…" />
       </div>
     )
   }

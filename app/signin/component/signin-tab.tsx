@@ -3,6 +3,7 @@ import { AlertCircle, ArrowRight } from "lucide-react"
 import Spinner from "./spinner"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { toast } from "sonner"
 import { MAX_LEN, validate } from "./auth-form"
 
 function SignInTab({ redirect }: { redirect: string }) {
@@ -36,11 +37,20 @@ function SignInTab({ redirect }: { redirect: string }) {
         body: JSON.stringify({ action: 'signin', displayName: displayName.trim() }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error || 'Something went wrong.'); setLoading(false); return }
+      if (!res.ok) {
+        const msg = data.error || 'Something went wrong.'
+        setError(msg)
+        toast.error(msg)
+        setLoading(false)
+        return
+      }
+      toast.success('Welcome back!')
       router.push(redirect)
       router.refresh()
     } catch {
-      setError('Network error. Please try again.')
+      const msg = 'Network error. Please try again.'
+      setError(msg)
+      toast.error(msg)
       setLoading(false)
     }
   }

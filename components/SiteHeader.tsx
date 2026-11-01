@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { LogOut, User } from 'lucide-react'
+import { toast } from 'sonner'
 import { getClientSession } from '@/lib/session-client'
 
 interface SiteHeaderProps {
@@ -24,9 +25,14 @@ export default function SiteHeader({ left, right, className = '' }: SiteHeaderPr
 
   async function handleSignOut() {
     setSigningOut(true)
-    await fetch('/api/auth', { method: 'DELETE' })
-    router.refresh()
-    router.push('/')
+    try {
+      await fetch('/api/auth', { method: 'DELETE' })
+      router.refresh()
+      router.push('/')
+    } catch {
+      toast.error('Sign out failed. Please try again.')
+      setSigningOut(false)
+    }
   }
 
   return (

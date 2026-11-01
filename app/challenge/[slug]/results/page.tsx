@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, CheckCircle2, XCircle, Trophy, Share2, RotateCcw } from 'lucide-react'
+import { toast } from 'sonner'
 import { getMonument } from '@/lib/data/index'
 import type { Monument, Question } from '@/lib/data/index'
 import { getActiveAttempt, clearActiveAttempt, type QuizAttempt } from '@/lib/storage'
@@ -81,14 +82,23 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
     if (navigator.share) {
       try { await navigator.share({ title: `My ${monument?.name} result`, text }) } catch {}
     } else {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2500)
+      try {
+        await navigator.clipboard.writeText(text)
+        setCopied(true)
+        toast.success('Result copied to clipboard!')
+        setTimeout(() => setCopied(false), 2500)
+      } catch {
+        toast.error('Could not copy to clipboard.')
+      }
     }
   }
 
   if (!ready || !monument || !attempt) {
-    return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading results…</p></div>
+    return (
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+        <span className="spinner spinner--lg" aria-label="Loading results…" />
+      </div>
+    )
   }
 
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'

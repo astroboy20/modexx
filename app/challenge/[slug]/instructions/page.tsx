@@ -29,7 +29,11 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
   }, [slug, router])
 
   if (!ready || !monument) {
-    return <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}><p style={{ color: 'var(--muted)', fontSize: 14 }}>Loading…</p></div>
+    return (
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+        <span className="spinner spinner--lg" aria-label="Loading…" />
+      </div>
+    )
   }
 
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
