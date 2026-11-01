@@ -1,7 +1,5 @@
 'use client'
 
-// Client-side session reader — parses the modexx_session cookie
-// that the server sets. Used in client components that need the user.
 
 export interface SessionUser {
   id: string

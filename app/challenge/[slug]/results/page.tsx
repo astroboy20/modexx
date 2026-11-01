@@ -178,7 +178,14 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
       </div>
 
       {showScorecard && (
-        <ScorecardPreview monument={monument} displayName={displayName} score={attempt.score} correctCount={attempt.correctCount} completionSeconds={completionSeconds} rank={rank} onClose={() => setShowScorecard(false)} />
+        <ScorecardPreview 
+          monument={monument} 
+          displayName={displayName} 
+          score={attempt.score} 
+          correctCount={attempt.correctCount} 
+          completionSeconds={completionSeconds} 
+          rank={rank} 
+          onClose={() => setShowScorecard(false)} />
       )}
     </main>
   )

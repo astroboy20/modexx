@@ -49,7 +49,7 @@ export default function ScorecardPreview({
   }
 
   async function handleShare() {
-    const text = `I completed ${monument.name} on Modexx.\n10 hotspots explored. ${correctCount}/10 correct. ${score}/1,000 points.${rank ? ` Ranked #${rank}.` : ''}\nCan you beat my score?\nmodexx.app/monuments/${monument.slug}`
+    const text = `I completed ${monument.name} on Modexx.\n10 hotspots explored. ${correctCount}/10 correct. ${score}/1,000 points.${rank ? ` Ranked #${rank}.` : ''}\nCan you beat my score?\nmodexx.co/monuments/${monument.slug}`
     if (navigator.share) {
       try { await navigator.share({ title: `My ${monument.name} result`, text }) } catch {}
     } else {
@@ -72,7 +72,6 @@ export default function ScorecardPreview({
           <button className="story-close" onClick={onClose} aria-label="Close scorecard"><X size={20} /></button>
         </div>
 
-        {/* The actual card — designed as a 4:5 flyer */}
         <div className="scorecard-card-wrap">
           <div
             ref={cardRef}

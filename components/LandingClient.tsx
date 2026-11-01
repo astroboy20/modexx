@@ -11,63 +11,12 @@ import {
   User,
   LogOut,
   Compass,
-  Trophy,
   Info,
   Zap,
 } from "lucide-react";
-import {
-  Sheet,
-  SheetTrigger,
-  SheetContent,
-  SheetClose,
-} from "@/components/ui/sheet";
+import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import type { SessionUser } from "@/lib/session";
-
-const steps = [
-  {
-    number: "01",
-    title: "Discover",
-    text: "Choose a monument from a living collection of remarkable stories.",
-  },
-  {
-    number: "02",
-    title: "Explore",
-    text: "Move through interactive hotspots and uncover the chapters within.",
-  },
-  {
-    number: "03",
-    title: "Challenge",
-    text: "Test what you learned with a focused trivia experience.",
-  },
-  {
-    number: "04",
-    title: "Share",
-    text: "Turn your result into a scorecard worth keeping and sharing.",
-  },
-];
-
-const audiences = [
-  [
-    "01",
-    "Individuals",
-    "Preserve a legacy, a journey, or a life's work in a form people can truly explore.",
-  ],
-  [
-    "02",
-    "Brands",
-    "Make milestones, products, and cultural memory feel close, tangible, and memorable.",
-  ],
-  [
-    "03",
-    "Institutions",
-    "Open up heritage, programmes, and achievements through connected storytelling.",
-  ],
-  [
-    "04",
-    "Communities",
-    "Give meaningful places, movements, and shared histories a space to be discovered.",
-  ],
-];
+import { audiences, steps } from "@/lib/data/home-data";
 
 interface Props {
   user: SessionUser | null;
@@ -100,10 +49,8 @@ export default function LandingClient({ user }: Props) {
 
   return (
     <main className="modexx-site">
-      {/* ── Sticky header ─────────────────────────────────────────────── */}
       <header className="landing-header">
         <div className="landing-header-inner">
-          {/* Wordmark */}
           <Link href="/" className="wordmark" aria-label="Modexx home">
             <span>mod</span>exx<span className="wordmark-dot">.</span>
           </Link>
@@ -241,7 +188,7 @@ export default function LandingClient({ user }: Props) {
         </div>
       </header>
 
-      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      {/*  Hero  */}
       <section className="hero" id="about">
         <div className="hero-copy">
           <p className="eyebrow">
@@ -295,7 +242,7 @@ export default function LandingClient({ user }: Props) {
         </div>
       </section>
 
-      {/* ── Statement ─────────────────────────────────────────────────── */}
+      {/*  Statement  */}
       <section className="statement" aria-labelledby="statement-title">
         <p className="eyebrow">The Modexx point of view</p>
         <h2 id="statement-title">
@@ -307,7 +254,7 @@ export default function LandingClient({ user }: Props) {
         </p>
       </section>
 
-      {/* ── Process ───────────────────────────────────────────────────── */}
+      {/*  Process  */}
       <section className="process section-shell" id="how-it-works">
         <div className="section-intro">
           <p className="eyebrow">The experience</p>
@@ -329,7 +276,7 @@ export default function LandingClient({ user }: Props) {
         </div>
       </section>
 
-      {/* ── Preview ───────────────────────────────────────────────────── */}
+      {/*  Preview  */}
       <section className="preview section-shell">
         <div className="preview-copy">
           <p className="eyebrow">Try the format</p>
@@ -377,7 +324,7 @@ export default function LandingClient({ user }: Props) {
         </div>
       </section>
 
-      {/* ── Audience ──────────────────────────────────────────────────── */}
+      {/*  Audience  */}
       <section className="audience section-shell" id="for">
         <div className="audience-heading">
           <p className="eyebrow">Made for meaningful stories</p>
@@ -399,7 +346,7 @@ export default function LandingClient({ user }: Props) {
         </div>
       </section>
 
-      {/* ── Closing ───────────────────────────────────────────────────── */}
+    {/* closing */}
       <section className="closing">
         <p className="eyebrow">Begin with curiosity</p>
         <h2>
@@ -413,7 +360,7 @@ export default function LandingClient({ user }: Props) {
         </Link>
       </section>
 
-      {/* ── Footer ────────────────────────────────────────────────────── */}
+      {/*  Footer  */}
       <footer className="site-footer">
         <Link href="/" className="wordmark">
           mod<span>exx</span>

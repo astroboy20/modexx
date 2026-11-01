@@ -15,7 +15,7 @@ async function getSessionPlayer() {
   }
 }
 
-// ── GET /api/leaderboard?slug=tinubu ─────────────────────────────────────
+// ── GET /api/leaderboard?slug=tinubu 
 // Returns the top 20 entries for a monument, ranked by score
 
 export async function GET(req: NextRequest) {
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ entries: data ?? [] })
 }
 
-// ── POST /api/leaderboard ─────────────────────────────────────────────────
+// ── POST /api/leaderboard 
 // Submits a quiz result and upserts the leaderboard entry
 
 export async function POST(req: NextRequest) {

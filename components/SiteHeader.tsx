@@ -7,11 +7,8 @@ import { LogOut, User } from 'lucide-react'
 import { getClientSession } from '@/lib/session-client'
 
 interface SiteHeaderProps {
-  /** Content to render on the left side (e.g. a back link) */
   left?: React.ReactNode
-  /** Content to render on the right side — if omitted, shows user pill + sign-out */
   right?: React.ReactNode
-  /** Extra class names on the <header> */
   className?: string
 }
 

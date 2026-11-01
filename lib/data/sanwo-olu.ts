@@ -11,17 +11,16 @@ export const sanwoOluMonument: Monument = {
   intro:
     "Explore the people, places, and public decisions behind Lagos's evolving story of leadership and possibility. 10 chapters covering the governorship of Babajide Sanwo-Olu.",
   hotspots: [
-    // Calibrated on sanwo-olu.png (757×1024px) via /calibrate
-    { id: 'sanwo-h1',  label: 'Journey to Alausa',    metaphor: 'Cap',          chapter: 'Chapter 01', x: 50, y: 3,  displayOrder: 1  },
-    { id: 'sanwo-h2',  label: 'The Lagos Vision',      metaphor: 'Glasses',      chapter: 'Chapter 02', x: 54, y: 9,  displayOrder: 2  },
-    { id: 'sanwo-h3',  label: 'Years of Governance',   metaphor: 'Wristwatch',   chapter: 'Chapter 03', x: 59, y: 41, displayOrder: 3  },
-    { id: 'sanwo-h4',  label: 'Public Administration', metaphor: 'Torso/Outfit', chapter: 'Chapter 04', x: 45, y: 33, displayOrder: 4  },
-    { id: 'sanwo-h5',  label: 'Serving Lagosians',     metaphor: 'Hands',        chapter: 'Chapter 05', x: 46, y: 43, displayOrder: 5  },
-    { id: 'sanwo-h6',  label: 'The Finer Details',     metaphor: 'Ring',         chapter: 'Chapter 06', x: 52, y: 46, displayOrder: 6  },
-    { id: 'sanwo-h7',  label: 'People & Services',     metaphor: 'Lapel/Pocket', chapter: 'Chapter 07', x: 16, y: 45, displayOrder: 7  },
-    { id: 'sanwo-h8',  label: 'Connecting the City',   metaphor: 'Belt',         chapter: 'Chapter 08', x: 60, y: 47, displayOrder: 8  },
-    { id: 'sanwo-h9',  label: 'Moving Lagos',          metaphor: 'Shoes',        chapter: 'Chapter 09', x: 62, y: 94, displayOrder: 9  },
-    { id: 'sanwo-h10', label: 'The Lagos Story',       metaphor: 'Full Figure',  chapter: 'Chapter 10', x: 82, y: 47, displayOrder: 10 },
+    { id: 'sanwo-h1', label: 'Journey to Alausa', metaphor: 'Cap', chapter: 'Chapter 01', x: 50, y: 3, displayOrder: 1 },
+    { id: 'sanwo-h2', label: 'The Lagos Vision', metaphor: 'Glasses', chapter: 'Chapter 02', x: 54, y: 9, displayOrder: 2 },
+    { id: 'sanwo-h3', label: 'Years of Governance', metaphor: 'Wristwatch', chapter: 'Chapter 03', x: 59, y: 41, displayOrder: 3 },
+    { id: 'sanwo-h4', label: 'Public Administration', metaphor: 'Torso/Outfit', chapter: 'Chapter 04', x: 45, y: 33, displayOrder: 4 },
+    { id: 'sanwo-h5', label: 'Serving Lagosians', metaphor: 'Hands', chapter: 'Chapter 05', x: 46, y: 43, displayOrder: 5 },
+    { id: 'sanwo-h6', label: 'The Finer Details', metaphor: 'Ring', chapter: 'Chapter 06', x: 52, y: 46, displayOrder: 6 },
+    { id: 'sanwo-h7', label: 'People & Services', metaphor: 'Lapel/Pocket', chapter: 'Chapter 07', x: 16, y: 45, displayOrder: 7 },
+    { id: 'sanwo-h8', label: 'Connecting the City', metaphor: 'Belt', chapter: 'Chapter 08', x: 60, y: 47, displayOrder: 8 },
+    { id: 'sanwo-h9', label: 'Moving Lagos', metaphor: 'Shoes', chapter: 'Chapter 09', x: 62, y: 94, displayOrder: 9 },
+    { id: 'sanwo-h10', label: 'The Lagos Story', metaphor: 'Full Figure', chapter: 'Chapter 10', x: 82, y: 47, displayOrder: 10 },
   ],
   stories: [
     {

@@ -21,7 +21,7 @@ function setCookie(res: NextResponse, payload: SessionPayload) {
   })
 }
 
-// ── POST /api/auth ─────────────────────────────────────────────────────────
+// ── POST /api/auth 
 // Body: { action: 'signup' | 'signin', displayName: string }
 
 export async function POST(req: NextRequest) {
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   const nameKey = name.toLowerCase()
 
-  // ── Sign up ──────────────────────────────────────────────────────────────
+  // ── Sign up 
   if (action === 'signup') {
     // Check if name is taken
     const { data: existing } = await supabaseAdmin
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     return res
   }
 
-  // ── Sign in ──────────────────────────────────────────────────────────────
+  // ── Sign in 
   if (action === 'signin') {
     const { data: player, error } = await supabaseAdmin
       .from('players')
@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ error: 'Unknown action.' }, { status: 400 })
 }
 
-// ── GET /api/auth — return current session ────────────────────────────────
+// ── GET /api/auth — return current session 
 export async function GET() {
   const cookieStore = await cookies()
   const raw = cookieStore.get(COOKIE_NAME)?.value
@@ -120,7 +120,7 @@ export async function GET() {
   }
 }
 
-// ── DELETE /api/auth — sign out ───────────────────────────────────────────
+// ── DELETE /api/auth — sign out 
 export async function DELETE() {
   const res = NextResponse.json({ ok: true })
   res.cookies.set(COOKIE_NAME, '', { maxAge: 0, path: '/' })

@@ -1,5 +1,4 @@
-// ── DEV-ONLY debug endpoint — remove before production ─────────────────────
-// Visit /api/debug to check your Supabase connection and table existence
+
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'

@@ -1,8 +1,5 @@
 'use client'
 
-// Leaderboard data fetching — reads from Supabase via API route
-// Falls back to empty array if the API is unavailable
-
 export interface LeaderboardEntry {
   id: string
   player_id: string
