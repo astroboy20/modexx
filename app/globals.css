@@ -750,3 +750,67 @@ a { color:inherit; text-decoration:none; }
 @media (prefers-reduced-motion: reduce) {
   .hotspot-btn:not(.hotspot-explored) { animation: none; }
 }
+
+
+/* ── Participant AR Scanning Mode ──────────────────────────────────────────── */
+
+/* Pulsating hotspot for participant scanning */
+.hotspot-pulsating {
+  animation: pulse-hotspot-intense 2s ease-in-out infinite !important;
+}
+
+@keyframes pulse-hotspot-intense {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1.2);
+    box-shadow: 0 0 0 4px rgba(22, 132, 71, 0.3), 0 0 20px rgba(22, 132, 71, 0.6);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.4);
+    box-shadow: 0 0 0 8px rgba(22, 132, 71, 0.5), 0 0 30px rgba(22, 132, 71, 0.8);
+  }
+}
+
+/* Blue variant for Tinubu monument */
+.blue .hotspot-pulsating {
+  animation: pulse-hotspot-blue 2s ease-in-out infinite !important;
+}
+
+@keyframes pulse-hotspot-blue {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1.2);
+    box-shadow: 0 0 0 4px rgba(70, 169, 216, 0.3), 0 0 20px rgba(70, 169, 216, 0.6);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.4);
+    box-shadow: 0 0 0 8px rgba(70, 169, 216, 0.5), 0 0 30px rgba(70, 169, 216, 0.8);
+  }
+}
+
+/* Pulsating label */
+.hotspot-pulse-label {
+  animation: pulse-label 2s ease-in-out infinite;
+}
+
+@keyframes pulse-label {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Scanned (completed) hotspots - faded */
+.hotspot-btn.hotspot-explored {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Override for participant mode - no hover on non-current hotspots */
+.explore-page--full .hotspot-btn:not(.hotspot-pulsating):hover {
+  transform: translate(-50%, -50%) scale(1); /* No hover effect on completed spots */
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .hotspot-pulsating,
+  .hotspot-pulse-label {
+    animation: none !important;
+  }
+}

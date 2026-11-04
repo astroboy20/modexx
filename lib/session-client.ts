@@ -4,6 +4,7 @@
 export interface SessionUser {
   id: string
   displayName: string
+  userRole: 'participant' | 'organizer'
 }
 
 export function getClientSession(): SessionUser | null {

@@ -1,8 +1,13 @@
 import type { Question } from './data/index'
 
 // Select N distinct questions without replacement from the question bank
+// Enhanced randomization: shuffle using timestamp + random for better uniqueness
 export function selectQuestions(questions: Question[], count: number = 10): Question[] {
-  const shuffled = [...questions].sort(() => Math.random() - 0.5)
+  const seed = Date.now() + Math.random() * 1000
+  const shuffled = [...questions].sort(() => {
+    const rand = Math.sin(seed * Math.random()) * 10000
+    return rand - Math.floor(rand)
+  })
   return shuffled.slice(0, Math.min(count, shuffled.length))
 }
 

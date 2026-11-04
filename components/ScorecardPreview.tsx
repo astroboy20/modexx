@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { X, Download, Share2, Copy, CheckCircle2 } from 'lucide-react'
 import type { Monument } from '@/lib/data/index'
 
@@ -12,6 +12,27 @@ interface ScorecardPreviewProps {
   completionSeconds: number
   rank: number | null
   onClose: () => void
+}
+
+// Election date for 2027 Lagos gubernatorial election (assuming similar timing to 2023 - March 18)
+const ELECTION_DATE = new Date('2027-03-18T00:00:00')
+
+function getCountdown() {
+  const now = new Date()
+  const diff = ELECTION_DATE.getTime() - now.getTime()
+  
+  if (diff <= 0) return 'Election Day!'
+  
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  
+  if (days > 365) {
+    const years = Math.floor(days / 365)
+    const remainingDays = days % 365
+    return `${years}y ${remainingDays}d`
+  }
+  
+  return `${days}d ${hours}h`
 }
 
 export default function ScorecardPreview({
@@ -26,10 +47,30 @@ export default function ScorecardPreview({
   const cardRef = useRef<HTMLDivElement>(null)
   const [downloading, setDownloading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [countdown, setCountdown] = useState(getCountdown())
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
   const mins = Math.floor(completionSeconds / 60)
   const secs = completionSeconds % 60
   const completedDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+
+  // Update countdown every hour
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown(getCountdown())
+    }, 60000) // Update every minute
+    return () => clearInterval(interval)
+  }, [])
+
+  // Get deputy governor image and name based on monument
+  const deputyGovernorInfo = monument.slug === 'sanwo-olu' ? {
+    name: 'Obafemi Hamzat',
+    image: '/hamzat.jpg', // You'll need to add this image
+    message: 'Vote for Hamzat'
+  } : {
+    name: 'President Tinubu & Obafemi Hamzat',
+    image: '/hamzat.jpg', // You'll need to add this image
+    message: 'Vote for Hamzat'
+  }
 
   async function handleDownload() {
     if (!cardRef.current) return
@@ -49,7 +90,7 @@ export default function ScorecardPreview({
   }
 
   async function handleShare() {
-    const text = `I completed ${monument.name} on Modexx.\n10 hotspots explored. ${correctCount}/10 correct. ${score}/1,000 points.${rank ? ` Ranked #${rank}.` : ''}\nCan you beat my score?\nmodexx.co/monuments/${monument.slug}`
+    const text = `I completed ${monument.name} on Modexx.\n10 hotspots explored. ${correctCount}/10 correct. ${score}/1,000 points.${rank ? ` Ranked #${rank}.` : ''}\n\n${deputyGovernorInfo.message} for 2027 Lagos election!\nCountdown: ${countdown}\n\nCan you beat my score?\nmodexx.co/monuments/${monument.slug}`
     if (navigator.share) {
       try { await navigator.share({ title: `My ${monument.name} result`, text }) } catch {}
     } else {
@@ -59,7 +100,6 @@ export default function ScorecardPreview({
     }
   }
 
-  // Close on overlay click
   function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
     if (e.target === e.currentTarget) onClose()
   }
@@ -134,6 +174,57 @@ export default function ScorecardPreview({
                   </div>
                 </>
               )}
+            </div>
+
+            {/* Election Section */}
+            <div style={{ 
+              margin: '20px 0', 
+              padding: '16px', 
+              background: `${accentColor}10`, 
+              borderRadius: '8px',
+              border: `2px solid ${accentColor}30`,
+              textAlign: 'center'
+            }}>
+              <div style={{ 
+                width: '80px', 
+                height: '80px', 
+                borderRadius: '50%', 
+                margin: '0 auto 12px',
+                background: '#fff',
+                border: `3px solid ${accentColor}`,
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={deputyGovernorInfo.image} 
+                  alt={deputyGovernorInfo.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    // Fallback to placeholder
+                    (e.target as HTMLImageElement).src = '/placeholder-user.jpg'
+                  }}
+                />
+              </div>
+              <p style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px', color: accentColor }}>
+                {deputyGovernorInfo.message}
+              </p>
+              <p style={{ fontSize: '12px', color: 'var(--ink-light)', marginBottom: '8px' }}>
+                2027 Lagos Gubernatorial Election
+              </p>
+              <div style={{ 
+                display: 'inline-block',
+                padding: '6px 16px',
+                background: accentColor,
+                color: '#fff',
+                borderRadius: '20px',
+                fontSize: '13px',
+                fontWeight: 600
+              }}>
+                ⏱ {countdown} to election
+              </div>
             </div>
 
             {/* Challenge prompt */}

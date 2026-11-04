@@ -8,6 +8,7 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
 interface SessionPayload {
   id: string
   displayName: string
+  userRole: 'participant' | 'organizer'
 }
 
 function setCookie(res: NextResponse, payload: SessionPayload) {
@@ -25,14 +26,14 @@ function setCookie(res: NextResponse, payload: SessionPayload) {
 // Body: { action: 'signup' | 'signin', displayName: string }
 
 export async function POST(req: NextRequest) {
-  let body: { action?: string; displayName?: string }
+  let body: { action?: string; displayName?: string; userRole?: 'participant' | 'organizer' }
   try {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
   }
 
-  const { action, displayName } = body
+  const { action, displayName, userRole = 'participant' } = body
   const name = (displayName ?? '').trim()
 
   // Validate display name
@@ -66,8 +67,8 @@ export async function POST(req: NextRequest) {
     // Create player
     const { data: player, error } = await supabaseAdmin
       .from('players')
-      .insert({ display_name: name, display_name_key: nameKey })
-      .select('id, display_name')
+      .insert({ display_name: name, display_name_key: nameKey, user_role: userRole })
+      .select('id, display_name, user_role')
       .single()
 
     if (error || !player) {
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
     }
 
     const res = NextResponse.json({ ok: true, displayName: player.display_name })
-    setCookie(res, { id: player.id, displayName: player.display_name })
+    setCookie(res, { id: player.id, displayName: player.display_name, userRole: player.user_role })
     return res
   }
 
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
   if (action === 'signin') {
     const { data: player, error } = await supabaseAdmin
       .from('players')
-      .select('id, display_name')
+      .select('id, display_name, user_role')
       .eq('display_name_key', nameKey)
       .maybeSingle()
 
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
     }
 
     const res = NextResponse.json({ ok: true, displayName: player.display_name })
-    setCookie(res, { id: player.id, displayName: player.display_name })
+    setCookie(res, { id: player.id, displayName: player.display_name, userRole: player.user_role })
     return res
   }
 

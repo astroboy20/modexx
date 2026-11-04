@@ -53,6 +53,7 @@ export async function POST(req: NextRequest) {
     score?: number
     correctCount?: number
     completionSeconds?: number
+    votersCardNumber?: string
   }
   try {
     body = await req.json()
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
   }
 
-  const { monumentSlug, score, correctCount, completionSeconds } = body
+  const { monumentSlug, score, correctCount, completionSeconds, votersCardNumber } = body
 
   // Validate
   if (!monumentSlug) return NextResponse.json({ error: 'Missing monumentSlug.' }, { status: 400 })
@@ -88,6 +89,7 @@ export async function POST(req: NextRequest) {
       player_id: player.id,
       monument_slug: monumentSlug,
       display_name: player.displayName,
+      voters_card_number: votersCardNumber || null,
       score,
       correct_count: correctCount,
       completion_seconds: completionSeconds,

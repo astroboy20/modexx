@@ -8,6 +8,7 @@ create table if not exists public.players (
   id           uuid primary key default gen_random_uuid(),
   display_name varchar(20) not null,
   display_name_key varchar(20) not null unique,  -- lowercase for uniqueness check
+  user_role    varchar(20) not null default 'participant' check (user_role in ('participant', 'organizer')),
   created_at   timestamptz not null default now()
 );
 
@@ -17,6 +18,7 @@ create table if not exists public.leaderboard_entries (
   player_id           uuid not null references public.players(id) on delete cascade,
   monument_slug       varchar(50) not null,
   display_name        varchar(20) not null,
+  voters_card_number  varchar(50),
   score               int not null check (score >= 0 and score <= 1000),
   correct_count       int not null check (correct_count >= 0 and correct_count <= 10),
   completion_seconds  int not null check (completion_seconds >= 0),

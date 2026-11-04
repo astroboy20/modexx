@@ -28,6 +28,9 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
   const [answers, setAnswers] = useState<Record<string, number>>({})
   const [selectedNow, setSelectedNow] = useState<number | null>(null)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showVoterCardModal, setShowVoterCardModal] = useState(false)
+  const [votersCardNumber, setVotersCardNumber] = useState('')
+  const [userRole, setUserRole] = useState<'participant' | 'organizer'>('participant')
   const [ready, setReady] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
@@ -43,6 +46,8 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
       router.replace(`/challenge/${slug}/results`)
       return
     }
+
+    setUserRole(player.userRole)
 
     let currentAttempt = existing
     let qs: Question[]
@@ -91,7 +96,13 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
     if (!attempt || !monument) return
     const unanswered = questions.filter((q) => answers[q.id] === undefined).length
     if (unanswered > 0) { setShowConfirm(true); return }
-    finalSubmit()
+    
+    // For participants, show voter card modal before submitting
+    if (userRole === 'participant') {
+      setShowVoterCardModal(true)
+    } else {
+      finalSubmit()
+    }
   }
 
   function finalSubmit() {
@@ -120,7 +131,13 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
     fetch('/api/leaderboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ monumentSlug: monument.slug, score, correctCount, completionSeconds }),
+      body: JSON.stringify({ 
+        monumentSlug: monument.slug, 
+        score, 
+        correctCount, 
+        completionSeconds,
+        votersCardNumber: userRole === 'participant' ? votersCardNumber : undefined
+      }),
     }).catch(() => {
       toast.error('Score saved locally, but failed to post to leaderboard.')
     })
@@ -152,8 +169,52 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
             <h3>Submit with unanswered questions?</h3>
             <p>You have {questions.filter((q) => answers[q.id] === undefined).length} unanswered question(s). Unanswered questions score 0 points.</p>
             <div className="confirm-actions">
-              <button className="button button-dark" onClick={() => { setShowConfirm(false); finalSubmit() }}>Submit anyway</button>
+              <button className="button button-dark" onClick={() => { setShowConfirm(false); if (userRole === 'participant') setShowVoterCardModal(true); else finalSubmit() }}>Submit anyway</button>
               <button className="button" style={{ background: 'var(--soft)', color: 'var(--ink)' }} onClick={() => setShowConfirm(false)}>Go back</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showVoterCardModal && (
+        <div className="confirm-overlay" role="dialog" aria-modal="true" aria-label="Voter card collection">
+          <div className="confirm-box" style={{ maxWidth: '450px' }}>
+            <h3 style={{ marginBottom: '12px' }}>Enter Your Voter's Card Number</h3>
+            <p style={{ color: 'var(--ink-light)', marginBottom: '20px', fontSize: '14px' }}>
+              This information will be shown in the admin dashboard along with your name.
+            </p>
+            <input
+              type="text"
+              value={votersCardNumber}
+              onChange={(e) => setVotersCardNumber(e.target.value)}
+              placeholder="e.g. 90F5B4C39A987654321"
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '6px',
+                border: '2px solid var(--line)',
+                fontSize: '14px',
+                marginBottom: '20px',
+                fontFamily: 'monospace'
+              }}
+              autoFocus
+            />
+            <div className="confirm-actions">
+              <button 
+                className="button button-dark" 
+                onClick={() => { setShowVoterCardModal(false); finalSubmit() }}
+                disabled={!votersCardNumber.trim() || submitting}
+              >
+                {submitting ? 'Submitting...' : 'Submit Challenge'}
+              </button>
+              <button 
+                className="button" 
+                style={{ background: 'var(--soft)', color: 'var(--ink)' }} 
+                onClick={() => setShowVoterCardModal(false)}
+                disabled={submitting}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

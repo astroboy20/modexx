@@ -3,13 +3,14 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, CheckCircle2, X, ExternalLink, ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle2, X, ExternalLink, ChevronLeft, ChevronRight, AlertCircle, Scan, PlayCircle, Camera } from 'lucide-react'
 import { getMonument } from '@/lib/data/index'
 import type { Monument, Hotspot, Story } from '@/lib/data/index'
 import {
   getExploredHotspots,
   markHotspotExplored,
 } from '@/lib/storage'
+import { getClientSession } from '@/lib/session-client'
 import SiteHeader from '@/components/SiteHeader'
 
 // ── Story Panel ────────────────────────────────────────────────────────────
@@ -27,7 +28,6 @@ interface StoryPanelProps {
 }
 
 function StoryPanel({ monument, hotspot, story, onClose, onPrev, onNext, hasPrev, hasNext, accentColor }: StoryPanelProps) {
-  // Close on Escape
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -96,19 +96,411 @@ function StoryPanel({ monument, hotspot, story, onClose, onPrev, onNext, hasPrev
   )
 }
 
-// ── Main Explorer ──────────────────────────────────────────────────────────
+// ── Participant AR Scanning Flow (Two-Device Experience) ──────────────────
 
-interface ExploreClientProps {
+interface ParticipantExploreProps {
+  monument: Monument
+  accentColor: string
+}
+
+function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) {
+  const router = useRouter()
+  const [currentHotspotIndex, setCurrentHotspotIndex] = useState(0)
+  const [scannedHotspots, setScannedHotspots] = useState<Set<number>>(new Set())
+  const [showTopic, setShowTopic] = useState(false)
+  const [scanDetected, setScanDetected] = useState(false)
+  
+  const sortedHotspots = [...monument.hotspots].sort((a, b) => a.displayOrder - b.displayOrder)
+  const currentHotspot = sortedHotspots[currentHotspotIndex]
+  const allScanned = scannedHotspots.size === sortedHotspots.length
+
+  // Check for scanned hotspots from localStorage (from QR scan)
+  useEffect(() => {
+    const checkScanned = () => {
+      const scannedKey = `scanned_${monument.slug}_${currentHotspot.id}`
+      if (localStorage.getItem(scannedKey) === 'true') {
+        // Hotspot was scanned via QR code
+        handleScanComplete()
+        localStorage.removeItem(scannedKey) // Clear the flag
+      }
+    }
+    
+    checkScanned()
+    // Check every second in case user scans while on this page
+    const interval = setInterval(checkScanned, 1000)
+    return () => clearInterval(interval)
+  }, [monument.slug, currentHotspot.id])
+
+  // Handle scan completion (from QR or click)
+  function handleScanComplete() {
+    setScanDetected(true)
+    setTimeout(() => {
+      setScannedHotspots(new Set([...scannedHotspots, currentHotspotIndex]))
+      setShowTopic(true)
+      markHotspotExplored(monument.slug, currentHotspot.id)
+      setScanDetected(false)
+    }, 1500)
+  }
+
+  // Simulate scan detection when user clicks the hotspot (fallback if no QR scanner)
+  function handleHotspotClick() {
+    handleScanComplete()
+  }
+
+  function handleNext() {
+    setShowTopic(false)
+    if (currentHotspotIndex < sortedHotspots.length - 1) {
+      setCurrentHotspotIndex(currentHotspotIndex + 1)
+    }
+  }
+
+  function handleStartChallenge() {
+    router.push(`/challenge/${monument.slug}/instructions`)
+  }
+
+  const story = monument.stories.find((s) => s.hotspotId === currentHotspot?.id)
+
+  return (
+    <main className={`explore-page explore-page--full ${monument.accent}`}>
+      <SiteHeader
+        className="detail-header explore-fixed-header"
+        left={<Link href={`/monuments/${monument.slug}`} className="text-link"><ArrowLeft size={16} /> Back</Link>}
+        right={<span style={{ fontSize: 13, color: 'var(--muted)' }}>{scannedHotspots.size} / {sortedHotspots.length}</span>}
+      />
+
+      <div className="explorer-layout">
+        {/* Left sidebar - minimal, mysterious */}
+        <aside className="explorer-sidebar">
+          <div className="explorer-sidebar-inner">
+            <p className="eyebrow" style={{ color: accentColor }}>
+              <span className="eyebrow-line" style={{ background: accentColor }} />
+              {monument.subject}
+            </p>
+            <h1 className="explorer-title">{monument.name}</h1>
+
+            {/* Progress bar - subtle */}
+            <div className="explorer-progress-bar-wrap">
+              <div className="explorer-progress-bar">
+                <div
+                  className="explorer-progress-fill"
+                  style={{
+                    width: `${(scannedHotspots.size / sortedHotspots.length) * 100}%`,
+                    background: accentColor,
+                  }}
+                />
+              </div>
+              <span className="explorer-progress-label">
+                {scannedHotspots.size} of {sortedHotspots.length} discovered
+              </span>
+            </div>
+
+            {!allScanned ? (
+              <>
+                {/* Mysterious current hotspot hint */}
+                {!showTopic && !scanDetected && (
+                  <div style={{ 
+                    padding: '24px', 
+                    background: `${accentColor}05`, 
+                    borderRadius: '12px', 
+                    marginBottom: '20px',
+                    border: `1px solid ${accentColor}20`
+                  }}>
+                    <p style={{ fontSize: '13px', color: 'var(--ink-light)', fontStyle: 'italic', lineHeight: 1.6 }}>
+                      "{currentHotspot.metaphor}"
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '12px' }}>
+                      Seek the glowing marker...
+                    </p>
+                  </div>
+                )}
+
+                {/* Scanning in progress */}
+                {scanDetected && (
+                  <div style={{ 
+                    padding: '24px', 
+                    background: `${accentColor}10`, 
+                    borderRadius: '12px', 
+                    marginBottom: '20px',
+                    border: `2px solid ${accentColor}`,
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ 
+                      width: '60px', 
+                      height: '60px', 
+                      margin: '0 auto 16px',
+                      borderRadius: '50%',
+                      border: `3px solid ${accentColor}`,
+                      borderTopColor: 'transparent',
+                      animation: 'spin 1s linear infinite'
+                    }} />
+                    <p style={{ fontSize: '14px', fontWeight: 500, color: accentColor }}>
+                      Scanning...
+                    </p>
+                  </div>
+                )}
+
+                {/* Topic revealed */}
+                {showTopic && (
+                  <div style={{ 
+                    padding: '24px', 
+                    background: `${accentColor}10`, 
+                    borderRadius: '12px', 
+                    marginBottom: '20px',
+                    border: `2px solid ${accentColor}30`
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                      <CheckCircle2 size={20} style={{ color: accentColor }} />
+                      <h4 style={{ fontSize: '16px', fontWeight: 600, color: accentColor }}>
+                        {currentHotspot.chapter}
+                      </h4>
+                    </div>
+                    
+                    <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px' }}>
+                      {currentHotspot.label}
+                    </h3>
+                    
+                    <div style={{ 
+                      fontSize: '14px', 
+                      lineHeight: 1.7, 
+                      color: 'var(--ink)',
+                      marginBottom: '16px'
+                    }}>
+                      {story?.body ? story.body.split('\n\n').map((para, i) => (
+                        <p key={i} style={{ marginBottom: '12px' }}>{para}</p>
+                      )) : <p>The story of {currentHotspot.label} unfolds here...</p>}
+                    </div>
+                    
+                    <button 
+                      className="button"
+                      style={{ background: accentColor, color: '#fff', width: '100%' }}
+                      onClick={handleNext}
+                    >
+                      {currentHotspotIndex < sortedHotspots.length - 1 ? 'Continue Journey →' : 'Complete Quest'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Discovered chapters list */}
+                <div style={{ marginTop: '24px' }}>
+                  <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px', color: 'var(--muted)' }}>
+                    DISCOVERED
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {sortedHotspots.map((hotspot, i) => {
+                      const discovered = scannedHotspots.has(i)
+                      const active = i === currentHotspotIndex
+                      
+                      if (!discovered && !active) return null // Hide undiscovered
+                      
+                      return (
+                        <div
+                          key={hotspot.id}
+                          style={{
+                            padding: '10px 12px',
+                            background: discovered ? `${accentColor}08` : 'transparent',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            border: active ? `1px solid ${accentColor}40` : '1px solid transparent',
+                            opacity: discovered ? 1 : 0.5
+                          }}
+                        >
+                          {discovered ? (
+                            <CheckCircle2 size={16} style={{ color: accentColor, flexShrink: 0 }} />
+                          ) : (
+                            <div style={{ 
+                              width: '16px', 
+                              height: '16px', 
+                              borderRadius: '50%', 
+                              border: `2px solid ${accentColor}`, 
+                              flexShrink: 0 
+                            }} />
+                          )}
+                          <span style={{ fontSize: '13px', fontWeight: discovered ? 500 : 400 }}>
+                            {hotspot.label}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="explorer-unlock">
+                <div className="explorer-unlock-badge" style={{ borderColor: accentColor, color: accentColor }}>
+                  <CheckCircle2 size={18} /> Quest Complete
+                </div>
+                <p style={{ fontSize: '14px', color: 'var(--ink-light)', marginTop: '12px', marginBottom: '20px' }}>
+                  You've uncovered all secrets. The final challenge awaits...
+                </p>
+                <button
+                  onClick={handleStartChallenge}
+                  className="button button-dark explorer-challenge-btn"
+                >
+                  Accept the Challenge <ArrowRight size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* Right: Portrait with mysterious pulsating hotspot */}
+        <div className="explorer-portrait-wrap">
+          <div className="explorer-portrait-container">
+            <div
+              className="explorer-portrait-bg"
+              aria-label={`${monument.subject} portrait`}
+            >
+              {/* Portrait image */}
+              {monument.slug === 'tinubu' ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/tinubu.png"
+                  alt="Discover the mysteries"
+                  className="portrait-image"
+                  draggable={false}
+                  style={{ filter: !allScanned ? 'brightness(0.95)' : 'brightness(1)' }}
+                />
+              ) : monument.slug === 'sanwo-olu' ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src="/sanwo-olu.png"
+                  alt="Discover the mysteries"
+                  className="portrait-image"
+                  draggable={false}
+                  style={{ filter: !allScanned ? 'brightness(0.95)' : 'brightness(1)' }}
+                />
+              ) : (
+                <div className="portrait-silhouette" style={{ background: monument.accent === 'green' ? '#d6ead9' : '#d5eaf5' }}>
+                  <div className="silhouette-figure" style={{ background: accentColor }} />
+                </div>
+              )}
+
+              {/* ONLY current pulsating hotspot - AR marker */}
+              {!allScanned && !showTopic && (
+                <button
+                  className="hotspot-btn hotspot-active hotspot-pulsating"
+                  style={{
+                    left: `${currentHotspot.x}%`,
+                    top: `${currentHotspot.y}%`,
+                    borderColor: accentColor,
+                    background: scanDetected ? `${accentColor}dd` : accentColor,
+                    color: '#fff',
+                    transform: scanDetected ? 'translate(-50%, -50%) scale(1)' : 'translate(-50%, -50%) scale(1.2)',
+                    zIndex: 10,
+                    boxShadow: scanDetected ? 'none' : `0 0 0 4px ${accentColor}33, 0 0 20px ${accentColor}66`,
+                    animation: scanDetected ? 'none' : 'pulse-hotspot 2s infinite',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    fontSize: '18px',
+                    fontWeight: 700
+                  }}
+                  onClick={handleHotspotClick}
+                  disabled={scanDetected}
+                  aria-label="Scan this location"
+                  data-ar-marker={`hotspot-${currentHotspot.id}`}
+                >
+                  {scanDetected ? <Scan size={16} /> : currentHotspot.displayOrder}
+                </button>
+              )}
+
+              {/* Discovered hotspots - faded */}
+              {sortedHotspots.map((hotspot, i) => {
+                const isDiscovered = scannedHotspots.has(i)
+                const isCurrent = i === currentHotspotIndex
+                
+                if (!isDiscovered || isCurrent) return null
+                
+                return (
+                  <div
+                    key={hotspot.id}
+                    className="hotspot-btn hotspot-explored"
+                    style={{
+                      left: `${hotspot.x}%`,
+                      top: `${hotspot.y}%`,
+                      borderColor: `${accentColor}60`,
+                      background: `${accentColor}30`,
+                      color: '#fff',
+                      pointerEvents: 'none',
+                      opacity: 0.4,
+                      fontSize: '10px'
+                    }}
+                  >
+                    ✓
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Subtle hint with scanner link */}
+          {!allScanned && !showTopic && (
+            <div style={{ 
+              padding: '16px', 
+              textAlign: 'center',
+              marginTop: '16px'
+            }}>
+              <p style={{ fontSize: '12px', color: 'var(--muted)', fontStyle: 'italic', marginBottom: '12px' }}>
+                Use your phone to scan the glowing marker...
+              </p>
+              <Link
+                href={`/monuments/${monument.slug}/scanner`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 16px',
+                  background: `${accentColor}15`,
+                  color: accentColor,
+                  borderRadius: '20px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                  border: `1px solid ${accentColor}30`,
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = `${accentColor}25`}
+                onMouseLeave={(e) => e.currentTarget.style.background = `${accentColor}15`}
+              >
+                <Camera size={16} /> Open AR Scanner
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes pulse-hotspot {
+          0%, 100% { 
+            transform: translate(-50%, -50%) scale(1.2); 
+            box-shadow: 0 0 0 4px ${accentColor}33, 0 0 20px ${accentColor}66;
+          }
+          50% { 
+            transform: translate(-50%, -50%) scale(1.4); 
+            box-shadow: 0 0 0 8px ${accentColor}55, 0 0 30px ${accentColor}88;
+          }
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+    </main>
+  )
+}
+
+// ── Organizer Explorer (original implementation) ───────────────────────────
+
+interface OrganizerExploreProps {
   monument: Monument
 }
 
-function ExploreClient({ monument }: ExploreClientProps) {
+function OrganizerExplore({ monument }: OrganizerExploreProps) {
   const [exploredIds, setExploredIds] = useState<string[]>([])
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null)
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
   const isComplete = exploredIds.length >= monument.hotspots.length
 
-  // Load persisted progress
   useEffect(() => {
     setExploredIds(getExploredHotspots(monument.slug))
   }, [monument.slug])
@@ -139,12 +531,8 @@ function ExploreClient({ monument }: ExploreClientProps) {
   const activeIdx = activeHotspot ? sortedHotspots.findIndex((h) => h.id === activeHotspot.id) : -1
   const activeStory = activeHotspot ? monument.stories.find((s) => s.hotspotId === activeHotspot.id) : undefined
 
-  // Gate challenge CTA: proxy already ensures user is authenticated
-  // so we can link directly to the challenge instructions
-
   return (
     <main className={`explore-page explore-page--full ${monument.accent}`}>
-      {/* Header */}
       <SiteHeader
         className="detail-header explore-fixed-header"
         left={<Link href={`/monuments/${monument.slug}`} className="text-link"><ArrowLeft size={16} /> Monument</Link>}
@@ -152,7 +540,6 @@ function ExploreClient({ monument }: ExploreClientProps) {
       />
 
       <div className="explorer-layout">
-        {/* Left: Info + chapter list */}
         <aside className="explorer-sidebar">
           <div className="explorer-sidebar-inner">
             <p className="eyebrow" style={{ color: accentColor }}>
@@ -161,7 +548,6 @@ function ExploreClient({ monument }: ExploreClientProps) {
             </p>
             <h1 className="explorer-title">{monument.name}</h1>
 
-            {/* Progress bar */}
             <div className="explorer-progress-bar-wrap">
               <div className="explorer-progress-bar">
                 <div
@@ -177,7 +563,6 @@ function ExploreClient({ monument }: ExploreClientProps) {
               </span>
             </div>
 
-            {/* Chapter list */}
             <div className="chapter-list-explorer">
               {sortedHotspots.map((hotspot) => {
                 const explored = exploredIds.includes(hotspot.id)
@@ -204,35 +589,32 @@ function ExploreClient({ monument }: ExploreClientProps) {
               })}
             </div>
 
-            {/* CTA */}
             {isComplete ? (
               <div className="explorer-unlock">
                 <div className="explorer-unlock-badge" style={{ borderColor: accentColor, color: accentColor }}>
-                  <CheckCircle2 size={18} /> All 10 chapters explored
+                  <CheckCircle2 size={18} /> All {monument.hotspots.length} chapters explored
                 </div>
                 <Link
                   href={`/challenge/${monument.slug}/instructions`}
                   className="button button-dark explorer-challenge-btn"
                 >
-                  Begin the challenge <ArrowRight size={16} />
+                  View Challenge Setup <ArrowRight size={16} />
                 </Link>
               </div>
             ) : (
               <p className="explorer-cta-hint">
-                Tap any hotspot on the portrait to open a chapter. Explore all {monument.hotspots.length} to unlock the trivia challenge.
+                Tap any hotspot on the portrait to open a chapter. Explore all {monument.hotspots.length} to set up the challenge.
               </p>
             )}
           </div>
         </aside>
 
-        {/* Right: Portrait with hotspots */}
         <div className="explorer-portrait-wrap">
           <div className="explorer-portrait-container">
             <div
               className="explorer-portrait-bg"
               aria-label={`${monument.subject} portrait`}
             >
-              {/* Real portrait image */}
               {monument.slug === 'tinubu' ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -250,14 +632,12 @@ function ExploreClient({ monument }: ExploreClientProps) {
                   draggable={false}
                 />
               ) : (
-                /* Fallback silhouette for monuments without a portrait */
                 <div className="portrait-silhouette" style={{ background: monument.accent === 'green' ? '#d6ead9' : '#d5eaf5' }}>
                   <div className="silhouette-figure" style={{ background: accentColor }} />
                   <span className="portrait-label">{monument.subject}</span>
                 </div>
               )}
 
-              {/* Hotspot buttons — positioned over the image */}
               {sortedHotspots.map((hotspot) => {
                 const explored = exploredIds.includes(hotspot.id)
                 const active = activeHotspot?.id === hotspot.id
@@ -282,7 +662,6 @@ function ExploreClient({ monument }: ExploreClientProps) {
                 )
               })}
 
-              {/* Hotspot tooltip label on hover */}
               {activeHotspot && (
                 <div
                   className="hotspot-active-label"
@@ -298,12 +677,10 @@ function ExploreClient({ monument }: ExploreClientProps) {
             </div>
           </div>
 
-          {/* Mobile hint */}
           <p className="portrait-mobile-hint">Tap a numbered marker to explore that chapter</p>
         </div>
       </div>
 
-      {/* Story Panel Overlay */}
       {activeHotspot && (
         <StoryPanel
           monument={monument}
@@ -326,16 +703,25 @@ function ExploreClient({ monument }: ExploreClientProps) {
 export default function ExplorePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = React.use(params)
   const [monument, setMonument] = useState<Monument | null>(null)
+  const [userRole, setUserRole] = useState<'participant' | 'organizer'>('participant')
   const [ready, setReady] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
+    const player = getClientSession()
+    if (!player) {
+      router.replace(`/signin?redirect=/monuments/${slug}/explore`)
+      return
+    }
+
     const m = getMonument(slug)
     if (!m) {
       router.replace('/monuments')
       return
     }
+    
     setMonument(m)
+    setUserRole(player.userRole)
     setReady(true)
   }, [slug, router])
 
@@ -347,5 +733,11 @@ export default function ExplorePage({ params }: { params: Promise<{ slug: string
     )
   }
 
-  return <ExploreClient monument={monument} />
+  const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
+
+  return userRole === 'participant' ? (
+    <ParticipantExplore monument={monument} accentColor={accentColor} />
+  ) : (
+    <OrganizerExplore monument={monument} />
+  )
 }
