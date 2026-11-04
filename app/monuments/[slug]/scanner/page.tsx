@@ -62,27 +62,48 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
     setScanning(false)
   }
 
-  // Simulate AR marker detection (in real implementation, use AR.js or similar)
-  function handleScanClick() {
-    if (!scanning) return
+  // Simulate AR marker detection - saves to database
+  async function handleScanClick() {
+    if (!scanning || !monument) return
     
     setDetected(true)
     
-    // Simulate detection delay
-    setTimeout(() => {
-      stopCamera()
-      // Store scan result
-      const currentHotspot = monument?.hotspots[0] // Would be dynamically detected
-      if (currentHotspot) {
-        const scannedKey = `scanned_${slug}_${currentHotspot.id}`
-        localStorage.setItem(scannedKey, 'true')
+    try {
+      // Find next unscanned hotspot from database
+      const res = await fetch(`/api/progress?monumentSlug=${slug}`)
+      const { progress } = await res.json()
+      
+      const scannedIds = new Set(progress.map((p: { hotspot_id: string }) => p.hotspot_id))
+      
+      // Find first unscanned hotspot
+      const nextHotspot = monument.hotspots
+        .sort((a, b) => a.displayOrder - b.displayOrder)
+        .find(h => !scannedIds.has(h.id))
+      
+      if (nextHotspot) {
+        // Save scan to database
+        await fetch('/api/progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            monumentSlug: slug,
+            hotspotId: nextHotspot.id
+          })
+        })
+        
+        console.log(`Scanned hotspot: ${nextHotspot.id}`)
       }
       
       // Redirect back to explore
       setTimeout(() => {
+        stopCamera()
         router.push(`/monuments/${slug}/explore`)
       }, 1500)
-    }, 1000)
+    } catch (err) {
+      console.error('Scan error:', err)
+      setDetected(false)
+      setError('Failed to save scan. Please try again.')
+    }
   }
 
   useEffect(() => {

@@ -97,3 +97,30 @@ FROM information_schema.columns
 WHERE table_schema = 'public' 
   AND table_name IN ('players', 'leaderboard_entries')
 ORDER BY table_name, ordinal_position;
+
+
+-- ============================================================
+-- Exploration Progress Tracking (for two-device sync)
+-- ============================================================
+
+-- Add exploration progress tracking table
+create table if not exists public.exploration_progress (
+  id                uuid primary key default gen_random_uuid(),
+  player_id         uuid not null references public.players(id) on delete cascade,
+  monument_slug     varchar(50) not null,
+  hotspot_id        varchar(50) not null,
+  scanned_at        timestamptz not null default now(),
+  unique(player_id, monument_slug, hotspot_id)
+);
+
+-- Index for fast progress queries
+create index if not exists exploration_progress_player_idx
+  on public.exploration_progress (player_id, monument_slug);
+
+-- Enable RLS
+alter table public.exploration_progress enable row level security;
+
+-- Anyone can read progress (for public display)
+create policy "Public read progress"
+  on public.exploration_progress for select
+  using (true);

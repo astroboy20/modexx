@@ -109,40 +109,132 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
   const [scannedHotspots, setScannedHotspots] = useState<Set<number>>(new Set())
   const [showTopic, setShowTopic] = useState(false)
   const [scanDetected, setScanDetected] = useState(false)
+  const [loading, setLoading] = useState(true)
   
   const sortedHotspots = [...monument.hotspots].sort((a, b) => a.displayOrder - b.displayOrder)
   const currentHotspot = sortedHotspots[currentHotspotIndex]
   const allScanned = scannedHotspots.size === sortedHotspots.length
 
-  // Check for scanned hotspots from localStorage (from QR scan)
+  // Load progress from database on mount
   useEffect(() => {
-    const checkScanned = () => {
-      const scannedKey = `scanned_${monument.slug}_${currentHotspot.id}`
-      if (localStorage.getItem(scannedKey) === 'true') {
-        // Hotspot was scanned via QR code
-        handleScanComplete()
-        localStorage.removeItem(scannedKey) // Clear the flag
+    async function loadProgress() {
+      try {
+        const res = await fetch(`/api/progress?monumentSlug=${monument.slug}`)
+        if (!res.ok) {
+          setLoading(false)
+          return
+        }
+        
+        const { progress } = await res.json()
+        const scannedIds = new Set(progress.map((p: { hotspot_id: string }) => p.hotspot_id))
+        
+        const savedIndices = new Set<number>()
+        sortedHotspots.forEach((hotspot, index) => {
+          if (scannedIds.has(hotspot.id)) {
+            savedIndices.add(index)
+          }
+        })
+        
+        if (savedIndices.size > 0) {
+          setScannedHotspots(savedIndices)
+          // Move to next unscanned hotspot
+          const nextUnscanned = sortedHotspots.findIndex((_, i) => !savedIndices.has(i))
+          if (nextUnscanned !== -1) {
+            setCurrentHotspotIndex(nextUnscanned)
+          } else {
+            setCurrentHotspotIndex(sortedHotspots.length - 1)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load progress:', err)
+      } finally {
+        setLoading(false)
       }
     }
     
-    checkScanned()
-    // Check every second in case user scans while on this page
-    const interval = setInterval(checkScanned, 1000)
-    return () => clearInterval(interval)
-  }, [monument.slug, currentHotspot.id])
+    loadProgress()
+  }, [monument.slug])
 
-  // Handle scan completion (from QR or click)
-  function handleScanComplete() {
+  // Poll for new scans every 2 seconds (for two-device sync)
+  useEffect(() => {
+    if (loading || allScanned) return
+    
+    const pollProgress = async () => {
+      try {
+        const res = await fetch(`/api/progress?monumentSlug=${monument.slug}`)
+        if (!res.ok) return
+        
+        const { progress } = await res.json()
+        const scannedIds = new Set(progress.map((p: { hotspot_id: string }) => p.hotspot_id))
+        
+        const newScannedIndices = new Set<number>()
+        sortedHotspots.forEach((hotspot, index) => {
+          if (scannedIds.has(hotspot.id)) {
+            newScannedIndices.add(index)
+          }
+        })
+        
+        // Check if current hotspot was just scanned
+        if (newScannedIndices.has(currentHotspotIndex) && !scannedHotspots.has(currentHotspotIndex)) {
+          handleScanDetected()
+        }
+        
+        setScannedHotspots(newScannedIndices)
+      } catch (err) {
+        console.error('Failed to poll progress:', err)
+      }
+    }
+    
+    const interval = setInterval(pollProgress, 2000) // Poll every 2 seconds
+    return () => clearInterval(interval)
+  }, [monument.slug, currentHotspotIndex, scannedHotspots, loading, allScanned])
+
+  // Handle when scan is detected (from polling)
+  function handleScanDetected() {
+    if (scanDetected) return
+    
     setScanDetected(true)
+    
     setTimeout(() => {
-      setScannedHotspots(new Set([...scannedHotspots, currentHotspotIndex]))
-      setShowTopic(true)
+      const newScanned = new Set([...scannedHotspots, currentHotspotIndex])
+      setScannedHotspots(newScanned)
       markHotspotExplored(monument.slug, currentHotspot.id)
+      setShowTopic(true)
       setScanDetected(false)
     }, 1500)
   }
 
-  // Simulate scan detection when user clicks the hotspot (fallback if no QR scanner)
+  // Handle scan completion (from click - saves to database)
+  async function handleScanComplete() {
+    if (scannedHotspots.has(currentHotspotIndex) || scanDetected) return
+    
+    setScanDetected(true)
+    
+    try {
+      // Save to database
+      await fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          monumentSlug: monument.slug,
+          hotspotId: currentHotspot.id
+        })
+      })
+      
+      setTimeout(() => {
+        const newScanned = new Set([...scannedHotspots, currentHotspotIndex])
+        setScannedHotspots(newScanned)
+        markHotspotExplored(monument.slug, currentHotspot.id)
+        setShowTopic(true)
+        setScanDetected(false)
+      }, 1500)
+    } catch (err) {
+      console.error('Failed to save scan:', err)
+      setScanDetected(false)
+    }
+  }
+
+  // Click handler
   function handleHotspotClick() {
     handleScanComplete()
   }
@@ -156,6 +248,14 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
 
   function handleStartChallenge() {
     router.push(`/challenge/${monument.slug}/instructions`)
+  }
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+        <span className="spinner spinner--lg" aria-label="Loading progress…" />
+      </div>
+    )
   }
 
   const story = monument.stories.find((s) => s.hotspotId === currentHotspot?.id)
