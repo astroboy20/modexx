@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowRight, CheckCircle2, X, ExternalLink, ChevronLeft, ChevronRight, AlertCircle, Scan, PlayCircle, Camera } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle2, X, ExternalLink, ChevronLeft, ChevronRight, AlertCircle, Scan, Camera } from 'lucide-react'
 import { getMonument } from '@/lib/data/index'
 import type { Monument, Hotspot, Story } from '@/lib/data/index'
 import {
@@ -11,6 +11,7 @@ import {
   markHotspotExplored,
 } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
+import { getWebSocketClient, disconnectWebSocket } from '@/lib/websocket'
 import SiteHeader from '@/components/SiteHeader'
 
 // ── Story Panel ────────────────────────────────────────────────────────────
@@ -110,18 +111,25 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
   const [showTopic, setShowTopic] = useState(false)
   const [scanDetected, setScanDetected] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [wsConnected, setWsConnected] = useState(false)
   
   const sortedHotspots = [...monument.hotspots].sort((a, b) => a.displayOrder - b.displayOrder)
   const currentHotspot = sortedHotspots[currentHotspotIndex]
   const allScanned = scannedHotspots.size === sortedHotspots.length
 
-  // Load progress from database on mount
+  // Load progress from database on mount and setup WebSocket
   useEffect(() => {
+    const player = getClientSession()
+    if (!player) return
+
+    let isMounted = true
+    let ws: ReturnType<typeof getWebSocketClient> | null = null
+
     async function loadProgress() {
       try {
         const res = await fetch(`/api/progress?monumentSlug=${monument.slug}`)
-        if (!res.ok) {
-          setLoading(false)
+        if (!res.ok || !isMounted) {
+          if (isMounted) setLoading(false)
           return
         }
         
@@ -135,76 +143,127 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
           }
         })
         
-        if (savedIndices.size > 0) {
+        if (isMounted) {
           setScannedHotspots(savedIndices)
-          // Move to next unscanned hotspot
-          const nextUnscanned = sortedHotspots.findIndex((_, i) => !savedIndices.has(i))
-          if (nextUnscanned !== -1) {
-            setCurrentHotspotIndex(nextUnscanned)
-          } else {
-            setCurrentHotspotIndex(sortedHotspots.length - 1)
+          
+          if (savedIndices.size > 0) {
+            // Move to next unscanned hotspot
+            const nextUnscanned = sortedHotspots.findIndex((_, i) => !savedIndices.has(i))
+            if (nextUnscanned !== -1) {
+              setCurrentHotspotIndex(nextUnscanned)
+            } else {
+              setCurrentHotspotIndex(sortedHotspots.length - 1)
+            }
           }
         }
       } catch (err) {
         console.error('Failed to load progress:', err)
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
+      }
+    }
+    
+    async function setupWebSocket() {
+      if (!player) return // Guard clause
+      
+      try {
+        ws = getWebSocketClient(player.id, player.displayName)
+        await ws.connect()
+        
+        if (!isMounted) return
+        
+        // Join monument room
+        ws.joinMonument(monument.slug)
+        
+        // Listen for scans from other device
+        const handleHotspotUnlocked = (data: { monumentSlug: string; hotspotId: string }) => {
+          if (!isMounted || data.monumentSlug !== monument.slug) return
+          
+          // Find hotspot index
+          const hotspotIndex = sortedHotspots.findIndex(h => h.id === data.hotspotId)
+          if (hotspotIndex === -1) return
+          
+          // Update scanned hotspots
+          setScannedHotspots(prev => {
+            const newSet = new Set(prev)
+            newSet.add(hotspotIndex)
+            return newSet
+          })
+          
+          // If it's the current hotspot, trigger animation
+          setCurrentHotspotIndex(current => {
+            if (hotspotIndex === current) {
+              // Trigger scan animation
+              setScanDetected(true)
+              setTimeout(() => {
+                if (isMounted) {
+                  markHotspotExplored(monument.slug, sortedHotspots[hotspotIndex].id)
+                  setShowTopic(true)
+                  setScanDetected(false)
+                }
+              }, 1500)
+            }
+            return current
+          })
+        }
+        
+        const handleConnect = () => {
+          if (isMounted) {
+            console.log('[Explore] WebSocket connected')
+            setWsConnected(true)
+          }
+        }
+        
+        const handleDisconnect = () => {
+          if (isMounted) {
+            console.log('[Explore] WebSocket disconnected')
+            setWsConnected(false)
+          }
+        }
+        
+        ws.onHotspotUnlocked(handleHotspotUnlocked)
+        ws.onConnect(handleConnect)
+        ws.onDisconnect(handleDisconnect)
+        
+        if (isMounted) {
+          setWsConnected(ws.isConnected())
+        }
+      } catch (err) {
+        console.error('WebSocket setup failed:', err)
       }
     }
     
     loadProgress()
-  }, [monument.slug])
-
-  // Poll for new scans every 2 seconds (for two-device sync)
-  useEffect(() => {
-    if (loading || allScanned) return
+    setupWebSocket()
     
-    const pollProgress = async () => {
-      try {
-        const res = await fetch(`/api/progress?monumentSlug=${monument.slug}`)
-        if (!res.ok) return
-        
-        const { progress } = await res.json()
-        const scannedIds = new Set(progress.map((p: { hotspot_id: string }) => p.hotspot_id))
-        
-        const newScannedIndices = new Set<number>()
-        sortedHotspots.forEach((hotspot, index) => {
-          if (scannedIds.has(hotspot.id)) {
-            newScannedIndices.add(index)
-          }
-        })
-        
-        // Check if current hotspot was just scanned
-        if (newScannedIndices.has(currentHotspotIndex) && !scannedHotspots.has(currentHotspotIndex)) {
-          handleScanDetected()
-        }
-        
-        setScannedHotspots(newScannedIndices)
-      } catch (err) {
-        console.error('Failed to poll progress:', err)
+    return () => {
+      isMounted = false
+      if (ws) {
+        ws.off('hotspot:unlocked')
+        ws.off('connect')
+        ws.off('disconnect')
+        disconnectWebSocket()
       }
     }
-    
-    const interval = setInterval(pollProgress, 2000) // Poll every 2 seconds
-    return () => clearInterval(interval)
-  }, [monument.slug, currentHotspotIndex, scannedHotspots, loading, allScanned])
+  }, [monument.slug, sortedHotspots])
 
-  // Handle when scan is detected (from polling)
+  // Handle when scan is detected (from WebSocket or click)
   function handleScanDetected() {
-    if (scanDetected) return
-    
     setScanDetected(true)
     
     setTimeout(() => {
-      const newScanned = new Set([...scannedHotspots, currentHotspotIndex])
-      setScannedHotspots(newScanned)
+      setScannedHotspots(prev => {
+        const newSet = new Set(prev)
+        newSet.add(currentHotspotIndex)
+        return newSet
+      })
       markHotspotExplored(monument.slug, currentHotspot.id)
       setShowTopic(true)
       setScanDetected(false)
     }, 1500)
   }
 
-  // Handle scan completion (from click - saves to database)
+  // Handle scan completion (from click - saves to database and broadcasts)
   async function handleScanComplete() {
     if (scannedHotspots.has(currentHotspotIndex) || scanDetected) return
     
@@ -221,9 +280,25 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
         })
       })
       
+      // Broadcast via WebSocket
+      const player = getClientSession()
+      if (player) {
+        try {
+          const ws = getWebSocketClient(player.id, player.displayName)
+          if (ws.isConnected()) {
+            ws.sendScannerDetection(monument.slug, currentHotspot.id)
+          }
+        } catch (wsErr) {
+          console.warn('WebSocket broadcast failed:', wsErr)
+        }
+      }
+      
       setTimeout(() => {
-        const newScanned = new Set([...scannedHotspots, currentHotspotIndex])
-        setScannedHotspots(newScanned)
+        setScannedHotspots(prev => {
+          const newSet = new Set(prev)
+          newSet.add(currentHotspotIndex)
+          return newSet
+        })
         markHotspotExplored(monument.slug, currentHotspot.id)
         setShowTopic(true)
         setScanDetected(false)

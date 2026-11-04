@@ -25,6 +25,16 @@ create table if not exists public.leaderboard_entries (
   completed_at        timestamptz not null default now()
 );
 
+-- Exploration progress tracking table (for two-device sync)
+create table if not exists public.exploration_progress (
+  id                uuid primary key default gen_random_uuid(),
+  player_id         uuid not null references public.players(id) on delete cascade,
+  monument_slug     varchar(50) not null,
+  hotspot_id        varchar(50) not null,
+  scanned_at        timestamptz not null default now(),
+  unique(player_id, monument_slug, hotspot_id)
+);
+
 -- Index for fast leaderboard queries per monument
 create index if not exists leaderboard_entries_monument_idx
   on public.leaderboard_entries (monument_slug, score desc, correct_count desc, completion_seconds asc);
@@ -33,10 +43,20 @@ create index if not exists leaderboard_entries_monument_idx
 create index if not exists leaderboard_entries_player_idx
   on public.leaderboard_entries (player_id, monument_slug);
 
+-- Index for fast progress queries
+create index if not exists exploration_progress_player_idx
+  on public.exploration_progress (player_id, monument_slug);
+
 -- ── Row Level Security ──────────────────────────────────────────────────────
 
 alter table public.players enable row level security;
 alter table public.leaderboard_entries enable row level security;
+alter table public.exploration_progress enable row level security;
+
+-- Drop existing policies if they exist (to allow re-running this script)
+drop policy if exists "Public read players" on public.players;
+drop policy if exists "Public read leaderboard" on public.leaderboard_entries;
+drop policy if exists "Public read progress" on public.exploration_progress;
 
 -- Anyone can read players and leaderboard (public competition)
 create policy "Public read players"
@@ -44,6 +64,9 @@ create policy "Public read players"
 
 create policy "Public read leaderboard"
   on public.leaderboard_entries for select using (true);
+
+create policy "Public read progress"
+  on public.exploration_progress for select using (true);
 
 -- Only server-side (service role) can insert/update — no direct client writes
 -- This means all writes go through our API routes which use the service role key
@@ -55,6 +78,7 @@ create or replace view public.leaderboard_best as
     player_id,
     monument_slug,
     display_name,
+    voters_card_number,
     score,
     correct_count,
     completion_seconds,
