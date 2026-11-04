@@ -179,6 +179,8 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
         const handleHotspotUnlocked = (data: { monumentSlug: string; hotspotId: string }) => {
           if (!isMounted || data.monumentSlug !== monument.slug) return
           
+          console.log('[Explore] Received hotspot unlock:', data.hotspotId)
+          
           // Find hotspot index
           const hotspotIndex = sortedHotspots.findIndex(h => h.id === data.hotspotId)
           if (hotspotIndex === -1) return
@@ -239,10 +241,11 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
     return () => {
       isMounted = false
       if (ws) {
+        // Important: Don't call disconnectWebSocket() here!
+        // Just remove event listeners - socket stays alive for other components
         ws.off('hotspot:unlocked')
         ws.off('connect')
         ws.off('disconnect')
-        disconnectWebSocket()
       }
     }
   }, [monument.slug, sortedHotspots])

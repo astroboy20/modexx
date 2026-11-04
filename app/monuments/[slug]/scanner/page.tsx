@@ -71,16 +71,21 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         streamRef.current = stream
-        setCameraActive(true)
-        setScanning(true)
         
         // Fetch and set target hotspot
         const target = await fetchTargetHotspot()
         setTargetHotspot(target)
         
-        // Start detection loop
-        if (target) {
-          startDetectionLoop()
+        // Wait for video to be ready before starting detection
+        videoRef.current.onloadedmetadata = () => {
+          setCameraActive(true)
+          setScanning(true)
+          
+          // Start detection loop after video is ready
+          if (target) {
+            console.log('Starting detection for target:', target)
+            setTimeout(() => startDetectionLoop(), 500) // Small delay to ensure video is rendering
+          }
         }
       }
     } catch (err) {
@@ -108,17 +113,26 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
 
   // Color detection algorithm to find pulsating hotspot
   function detectPulsatingMarker(): number {
-    if (!videoRef.current || !canvasRef.current || !monument) return 0
+    if (!videoRef.current || !canvasRef.current || !monument) {
+      console.log('Detection skipped: missing refs')
+      return 0
+    }
     
     const video = videoRef.current
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
     
-    if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) return 0
+    if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
+      console.log('Detection skipped: video not ready', video.readyState)
+      return 0
+    }
     
-    // Set canvas size to match video
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    // Set canvas size to match video (only if needed)
+    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      console.log('Canvas sized:', canvas.width, 'x', canvas.height)
+    }
     
     // Draw current video frame to canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
@@ -175,6 +189,15 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
       
       // Combined confidence score
       const confidence = (colorScore * 0.7 + brightnessScore * 0.3)
+      
+      // Debug logging (remove after testing)
+      if (Math.random() < 0.1) { // Log 10% of frames to avoid spam
+        console.log('Detection:', {
+          colorScore: colorScore.toFixed(1),
+          brightnessScore: brightnessScore.toFixed(1),
+          confidence: confidence.toFixed(1)
+        })
+      }
       
       return Math.min(100, confidence * 2) // Amplify for better UX
     } catch (err) {
