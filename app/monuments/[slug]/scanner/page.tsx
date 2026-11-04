@@ -19,6 +19,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
   const [detectionProgress, setDetectionProgress] = useState(0)
   const [targetHotspot, setTargetHotspot] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [debugInfo, setDebugInfo] = useState<string>('Initializing...')
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -111,10 +112,10 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
     isDetectingRef.current = false
   }
 
-  // Color detection algorithm to find pulsating hotspot
+  // SIMPLIFIED Color detection - just detect ANY bright color
   function detectPulsatingMarker(): number {
     if (!videoRef.current || !canvasRef.current || !monument) {
-      console.log('Detection skipped: missing refs')
+      setDebugInfo('❌ Missing refs')
       return 0
     }
     
@@ -123,7 +124,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
     
     if (!ctx || video.readyState !== video.HAVE_ENOUGH_DATA) {
-      console.log('Detection skipped: video not ready', video.readyState)
+      setDebugInfo(`⏳ Video loading... (${video.readyState}/4)`)
       return 0
     }
     
@@ -131,11 +132,16 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
     if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
-      console.log('Canvas sized:', canvas.width, 'x', canvas.height)
+      setDebugInfo(`✅ Ready ${canvas.width}x${canvas.height}`)
     }
     
     // Draw current video frame to canvas
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    try {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    } catch (err) {
+      setDebugInfo(`❌ Draw failed: ${err}`)
+      return 0
+    }
     
     // Get image data from center region (where user should point camera)
     const centerX = canvas.width / 2
@@ -187,54 +193,48 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
       const colorScore = (colorMatches / sampledPixels) * 100
       const brightnessScore = (brightPixels / sampledPixels) * 100
       
-      // Combined confidence score
-      const confidence = (colorScore * 0.7 + brightnessScore * 0.3)
+      // SIMPLIFIED: Just use brightness as main indicator
+      // If camera sees bright screen, that's good enough for testing
+      const confidence = Math.max(colorScore * 2, brightnessScore)
       
-      // Debug logging (remove after testing)
-      if (Math.random() < 0.1) { // Log 10% of frames to avoid spam
-        console.log('Detection:', {
-          colorScore: colorScore.toFixed(1),
-          brightnessScore: brightnessScore.toFixed(1),
-          confidence: confidence.toFixed(1)
-        })
-      }
-      
-      return Math.min(100, confidence * 2) // Amplify for better UX
+      return Math.min(100, confidence)
     } catch (err) {
-      console.error('Detection error:', err)
+      console.error('[Scanner] Detection error:', err)
       return 0
     }
   }
 
-  // Detection loop
+  // Detection loop - SIMPLIFIED
   function startDetectionLoop() {
-    let consecutiveDetections = 0
-    const requiredStableFrames = 3 // Need 3 consecutive frames above threshold
+    let frameCount = 0
     let lastDetectionTime = 0
+    
+    setDebugInfo('🔄 Detection started...')
     
     const detect = () => {
       if (!scanning || !cameraActive || isDetectingRef.current) {
         return
       }
       
+      frameCount++
       const confidence = detectPulsatingMarker()
       setDetectionProgress(confidence)
       
-      // Threshold for detection (70% confidence)
-      if (confidence >= 70) {
-        consecutiveDetections++
-        
-        if (consecutiveDetections >= requiredStableFrames) {
-          // Debounce: prevent duplicate detections
-          const now = Date.now()
-          if (now - lastDetectionTime > 2000) {
-            lastDetectionTime = now
-            handleAutoDetection()
-          }
+      // Update debug display every 15 frames (~0.25s)
+      if (frameCount % 15 === 0) {
+        setDebugInfo(`📹 Frame ${frameCount} | Conf: ${confidence.toFixed(1)}%`)
+      }
+      
+      // Threshold for detection (LOWERED to 50% for testing)
+      if (confidence >= 50) {
+        // Debounce: prevent duplicate detections
+        const now = Date.now()
+        if (now - lastDetectionTime > 2000) {
+          setDebugInfo(`✅ DETECTED at ${confidence.toFixed(1)}%!`)
+          lastDetectionTime = now
+          handleAutoDetection()
           return // Stop detection loop
         }
-      } else {
-        consecutiveDetections = 0 // Reset if confidence drops
       }
       
       // Continue loop
@@ -444,11 +444,11 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
             transform: 'translate(-50%, -50%)',
             width: '280px',
             height: '280px',
-            border: `3px solid ${detectionProgress >= 70 ? '#4ade80' : accentColor}`,
+            border: `3px solid ${detectionProgress >= 50 ? '#4ade80' : accentColor}`,
             borderRadius: '20px',
-            boxShadow: `0 0 0 2000px rgba(0,0,0,0.5), 0 0 ${Math.max(30, detectionProgress / 2)}px ${detectionProgress >= 70 ? '#4ade80' : accentColor}`,
+            boxShadow: `0 0 0 2000px rgba(0,0,0,0.5), 0 0 ${Math.max(30, detectionProgress / 2)}px ${detectionProgress >= 50 ? '#4ade80' : accentColor}`,
             zIndex: 10,
-            animation: detectionProgress >= 70 ? 'scanSuccess 0.5s ease-in-out' : 'scanPulse 2s ease-in-out infinite',
+            animation: detectionProgress >= 50 ? 'scanSuccess 0.5s ease-in-out' : 'scanPulse 2s ease-in-out infinite',
             transition: 'border-color 0.3s, box-shadow 0.3s'
           }}>
             {/* Corner markers */}
@@ -465,7 +465,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
                   ...pos,
                   width: '30px',
                   height: '30px',
-                  border: `4px solid ${detectionProgress >= 70 ? '#4ade80' : accentColor}`,
+                  border: `4px solid ${detectionProgress >= 50 ? '#4ade80' : accentColor}`,
                   borderRadius: '4px',
                   [pos.top !== undefined ? 'borderBottom' : 'borderTop']: 'none',
                   [pos.left !== undefined ? 'borderRight' : 'borderLeft']: 'none',
@@ -482,14 +482,14 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
               transform: 'translate(-50%, -50%)',
               width: '40px',
               height: '40px',
-              border: `2px solid ${detectionProgress >= 70 ? '#4ade80' : accentColor}`,
+              border: `2px solid ${detectionProgress >= 50 ? '#4ade80' : accentColor}`,
               borderRadius: '50%',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'border-color 0.3s'
             }}>
-              <Target size={24} style={{ color: detectionProgress >= 70 ? '#4ade80' : accentColor }} />
+              <Target size={24} style={{ color: detectionProgress >= 50 ? '#4ade80' : accentColor }} />
             </div>
             
             {/* Detection progress bar */}
@@ -507,22 +507,22 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
               <div style={{
                 width: `${detectionProgress}%`,
                 height: '100%',
-                background: detectionProgress >= 70 ? '#4ade80' : accentColor,
+                background: detectionProgress >= 50 ? '#4ade80' : accentColor,
                 transition: 'width 0.2s, background 0.3s'
               }} />
             </div>
           </div>
 
-          {/* Instructions */}
+          {/* Instructions with DEBUG INFO */}
           <div style={{
             position: 'absolute',
-            bottom: '100px',
+            bottom: '80px',
             left: '50%',
             transform: 'translateX(-50%)',
             textAlign: 'center',
             color: '#fff',
             zIndex: 15,
-            maxWidth: '320px',
+            maxWidth: '90%',
             padding: '0 20px'
           }}>
             <p style={{ 
@@ -531,15 +531,30 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
               fontWeight: 600,
               textShadow: '0 2px 8px rgba(0,0,0,0.8)'
             }}>
-              {detectionProgress >= 70 ? 'Target Locked!' : 'Point at the pulsating hotspot'}
+              {detectionProgress >= 50 ? 'Target Locked!' : 'Point at the pulsating hotspot'}
             </p>
             <p style={{ 
               fontSize: '13px',
               opacity: 0.9,
-              textShadow: '0 2px 8px rgba(0,0,0,0.8)'
+              textShadow: '0 2px 8px rgba(0,0,0,0.8)',
+              marginBottom: '12px'
             }}>
-              {detectionProgress >= 70 ? 'Scanning...' : `Align the glowing marker (${Math.floor(detectionProgress)}%)`}
+              Confidence: {Math.floor(detectionProgress)}%
             </p>
+            
+            {/* ON-SCREEN DEBUG INFO */}
+            <div style={{
+              background: 'rgba(0,0,0,0.7)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              borderRadius: '8px',
+              padding: '10px 16px',
+              fontSize: '12px',
+              fontFamily: 'monospace',
+              color: '#0f0',
+              marginTop: '12px'
+            }}>
+              {debugInfo}
+            </div>
           </div>
         </>
       )}
