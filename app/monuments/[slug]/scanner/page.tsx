@@ -83,10 +83,30 @@ type Phase =
 
 // ── CDN script loaders ─────────────────────────────────────────────────────
 
+// Track in-flight script loads so a second call doesn't resolve before the
+// script has actually executed (the script tag exists but onload hasn't fired yet).
+const scriptLoadPromises = new Map<string, Promise<void>>()
+
 function loadScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) {
-      resolve()
+  // Return the existing promise if already in-flight or completed
+  if (scriptLoadPromises.has(src)) {
+    return scriptLoadPromises.get(src)!
+  }
+
+  const promise = new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`)
+    if (existing) {
+      // Tag exists but may still be loading — wait for its events
+      existing.addEventListener('load', () => resolve(), { once: true })
+      existing.addEventListener('error', () => reject(new Error(`Failed to load: ${src}`)), { once: true })
+      // If it already finished loading (readyState isn't a thing for scripts,
+      // but if MINDAR/THREE are already on window we can resolve immediately)
+      if (
+        (src.includes('three') && window.THREE) ||
+        (src.includes('mindar') && window.MINDAR?.IMAGE)
+      ) {
+        resolve()
+      }
       return
     }
     const s = document.createElement('script')
@@ -95,6 +115,26 @@ function loadScript(src: string): Promise<void> {
     s.onload = () => resolve()
     s.onerror = () => reject(new Error(`Failed to load: ${src}`))
     document.head.appendChild(s)
+  })
+
+  scriptLoadPromises.set(src, promise)
+  return promise
+}
+
+/** Poll until window.MINDAR.IMAGE is set (it may be assigned a tick after onload) */
+function waitForMindAR(timeoutMs = 5000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.MINDAR?.IMAGE) { resolve(); return }
+    const deadline = Date.now() + timeoutMs
+    const id = setInterval(() => {
+      if (window.MINDAR?.IMAGE) {
+        clearInterval(id)
+        resolve()
+      } else if (Date.now() > deadline) {
+        clearInterval(id)
+        reject(new Error('MindAR did not initialise after script load'))
+      }
+    }, 50)
   })
 }
 
@@ -106,12 +146,11 @@ async function ensureMindAR(): Promise<void> {
     await loadScript('https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.min.js')
   }
   await loadScript(
-    'https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/dist/mindar-image-three.prod.js'
+    'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js'
   )
 
-  if (!window.MINDAR?.IMAGE) {
-    throw new Error('MindAR did not initialise after script load')
-  }
+  // window.MINDAR may be set a microtask after onload — poll briefly
+  await waitForMindAR()
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────

@@ -1,0 +1,18 @@
+{
+  "name": "modexx-websocket-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone Socket.IO server for Modexx — deployed to Railway",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
+    "socket.io": "^4.8.4"
+  }
+}
