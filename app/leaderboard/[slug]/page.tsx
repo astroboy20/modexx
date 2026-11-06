@@ -26,16 +26,53 @@ export default function LeaderboardPage({ params }: { params: Promise<{ slug: st
     setMonument(m)
     setReady(true)
 
-    fetchLeaderboard(slug).then((ranked) => {
-      const player = getClientSession()
+    const player = getClientSession()
+
+    async function loadLeaderboard() {
+      const ranked = await fetchLeaderboard(slug)
       const mine = player ? ranked.find((e) => e.player_id === player.id) ?? null : null
       setEntries(ranked.slice(0, 10))
       setMyEntry(mine)
       setLoading(false)
-    }).catch(() => {
+    }
+
+    loadLeaderboard().catch(() => {
       toast.error('Failed to load rankings. Please refresh.')
       setLoading(false)
     })
+
+    // Real-time leaderboard updates via WebSocket
+    if (player) {
+      let ws: ReturnType<typeof import('@/lib/websocket').getWebSocketClient> | null = null
+      let isMounted = true
+
+      async function setupWS() {
+        const { getWebSocketClient } = await import('@/lib/websocket')
+        ws = getWebSocketClient(player!.id, player!.displayName)
+        await ws.connect().catch(() => {})
+        if (!isMounted) return
+
+        ws.onLeaderboardUpdate((data) => {
+          if (!isMounted || data.monumentSlug !== slug) return
+          // Re-fetch to get the latest ranked list
+          fetchLeaderboard(slug).then(ranked => {
+            if (!isMounted) return
+            const mine = player ? ranked.find((e) => e.player_id === player.id) ?? null : null
+            setEntries(ranked.slice(0, 10))
+            setMyEntry(mine)
+          }).catch(() => {})
+        })
+      }
+
+      setupWS()
+
+      return () => {
+        isMounted = false
+        if (ws) {
+          ws.off('leaderboard:newEntry')
+        }
+      }
+    }
   }, [slug, router])
 
   if (!ready || !monument) {

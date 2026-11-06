@@ -1,265 +1,140 @@
 /**
  * AR Detection Utilities
- * Multiple detection methods for robust pulsating hotspot recognition
+ *
+ * Primary detection: QR code scanning via jsQR
+ * - Each pulsating hotspot displays a QR code encoding its scan URL
+ * - The scanner reads the QR and extracts the hotspot ID
+ * - This is reliable, deterministic, and only triggers for the correct target
+ *
+ * Legacy fallback methods (color/brightness) are retained for reference but
+ * are NOT used in production — they produce too many false positives.
  */
 
 import jsQR from 'jsqr'
 
-interface ColorTarget {
-  r: number
-  g: number
-  b: number
-  name: string
+// ── Types ──────────────────────────────────────────────────────────────────
+
+export interface QRDetectionResult {
+  hotspotId: string | null
+  rawValue: string | null
+  confidence: 100 | 0
+  method: 'qr'
 }
 
-interface DetectionResult {
-  confidence: number
-  method: 'color' | 'brightness' | 'qr' | 'combined'
-  hotspotId?: string
-}
+// ── Primary: QR code detection ─────────────────────────────────────────────
 
 /**
- * Color-based detection - looks for specific accent color
+ * Scan a video frame for a QR code and extract the hotspot ID.
+ *
+ * @param imageData   ImageData from canvas.getImageData()
+ * @param expectedSlug  The current monument slug (validates the URL in the QR)
+ * @param hotspotIds  Set of valid hotspot IDs for this monument (validates the ID)
  */
-export function detectByColor(
+export function detectQRHotspot(
   imageData: ImageData,
-  targetColor: ColorTarget,
-  tolerance: number = 80
-): number {
-  const data = imageData.data
-  let colorMatches = 0
-  const totalPixels = data.length / 4
-  
-  // Sample every 4th pixel for performance
-  for (let i = 0; i < data.length; i += 16) {
-    const r = data[i]
-    const g = data[i + 1]
-    const b = data[i + 2]
-    
-    // Euclidean distance in RGB space
-    const colorDistance = Math.sqrt(
-      Math.pow(r - targetColor.r, 2) +
-      Math.pow(g - targetColor.g, 2) +
-      Math.pow(b - targetColor.b, 2)
-    )
-    
-    if (colorDistance < tolerance) {
-      colorMatches++
-    }
-  }
-  
-  const sampledPixels = totalPixels / 4
-  const colorScore = (colorMatches / sampledPixels) * 100
-  
-  return Math.min(100, colorScore * 2) // Amplify for better UX
-}
-
-/**
- * Brightness-based detection - looks for glowing/pulsating effect
- */
-export function detectByBrightness(
-  imageData: ImageData,
-  minBrightness: number = 180
-): number {
-  const data = imageData.data
-  let brightPixels = 0
-  let veryBrightPixels = 0
-  const totalPixels = data.length / 4
-  
-  // Sample every 4th pixel
-  for (let i = 0; i < data.length; i += 16) {
-    const r = data[i]
-    const g = data[i + 1]
-    const b = data[i + 2]
-    
-    const brightness = (r + g + b) / 3
-    
-    if (brightness > minBrightness) {
-      brightPixels++
-    }
-    
-    if (brightness > 220) {
-      veryBrightPixels++
-    }
-  }
-  
-  const sampledPixels = totalPixels / 4
-  const brightnessScore = (brightPixels / sampledPixels) * 100
-  const glowScore = (veryBrightPixels / sampledPixels) * 100
-  
-  // Combined score - glow effect weighted higher
-  return Math.min(100, (brightnessScore * 0.4 + glowScore * 0.6) * 1.5)
-}
-
-/**
- * Pattern detection - looks for circular patterns (hotspot markers)
- */
-export function detectCircularPattern(
-  imageData: ImageData,
-  targetColor: ColorTarget
-): number {
-  const { width, height, data } = imageData
-  const centerX = Math.floor(width / 2)
-  const centerY = Math.floor(height / 2)
-  
-  // Check for circular pattern around center
-  const radiusSteps = [10, 20, 30, 40, 50] // Multiple radii to check
-  let totalMatches = 0
-  let totalChecks = 0
-  
-  radiusSteps.forEach(radius => {
-    const angleSteps = 16 // Check 16 points around circle
-    
-    for (let i = 0; i < angleSteps; i++) {
-      const angle = (i / angleSteps) * Math.PI * 2
-      const x = Math.floor(centerX + radius * Math.cos(angle))
-      const y = Math.floor(centerY + radius * Math.sin(angle))
-      
-      if (x >= 0 && x < width && y >= 0 && y < height) {
-        const idx = (y * width + x) * 4
-        const r = data[idx]
-        const g = data[idx + 1]
-        const b = data[idx + 2]
-        
-        const colorDistance = Math.sqrt(
-          Math.pow(r - targetColor.r, 2) +
-          Math.pow(g - targetColor.g, 2) +
-          Math.pow(b - targetColor.b, 2)
-        )
-        
-        totalChecks++
-        if (colorDistance < 100) {
-          totalMatches++
-        }
-      }
-    }
-  })
-  
-  if (totalChecks === 0) return 0
-  
-  const patternScore = (totalMatches / totalChecks) * 100
-  return Math.min(100, patternScore * 1.2)
-}
-
-/**
- * QR code detection - reliable fallback method
- */
-export function detectQRCode(imageData: ImageData): string | null {
+  expectedSlug: string,
+  hotspotIds: Set<string>
+): QRDetectionResult {
   try {
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
-      inversionAttempts: 'dontInvert',
+      inversionAttempts: 'attemptBoth',
     })
-    
-    if (code && code.data) {
-      // QR code should contain hotspot ID in format: "hotspot-{id}"
-      const match = code.data.match(/^hotspot-(.+)$/)
-      if (match) {
-        return match[1]
-      }
+
+    if (!code?.data) {
+      return { hotspotId: null, rawValue: null, confidence: 0, method: 'qr' }
+    }
+
+    const hotspotId = parseHotspotId(code.data, expectedSlug, hotspotIds)
+    return {
+      hotspotId,
+      rawValue: code.data,
+      confidence: hotspotId ? 100 : 0,
+      method: 'qr',
     }
   } catch (err) {
-    console.error('QR detection error:', err)
+    console.error('[AR] QR detection error:', err)
+    return { hotspotId: null, rawValue: null, confidence: 0, method: 'qr' }
   }
-  
+}
+
+/**
+ * Parse the hotspot ID from a QR code value.
+ *
+ * Supported formats:
+ * 1. Full URL:  https://<origin>/monuments/<slug>/scan/<hotspotId>
+ * 2. Path-only: /monuments/<slug>/scan/<hotspotId>
+ * 3. Bare ID:   <hotspotId>  (must exist in hotspotIds set)
+ */
+export function parseHotspotId(
+  value: string,
+  expectedSlug: string,
+  hotspotIds: Set<string>
+): string | null {
+  if (!value) return null
+
+  // Try URL / path format
+  try {
+    const url = new URL(value, 'https://placeholder.local')
+    const parts = url.pathname.split('/').filter(Boolean)
+    // ['monuments', slug, 'scan', hotspotId]
+    if (
+      parts.length >= 4 &&
+      parts[0] === 'monuments' &&
+      parts[1] === expectedSlug &&
+      parts[2] === 'scan'
+    ) {
+      const id = decodeURIComponent(parts[3])
+      return hotspotIds.has(id) ? id : null
+    }
+  } catch {
+    // Not a URL
+  }
+
+  // Bare hotspot ID (legacy or direct encoding)
+  const stripped = value.replace(/^hotspot-/, '')
+  if (hotspotIds.has(stripped)) return stripped
+  if (hotspotIds.has(value)) return value
+
   return null
 }
 
-/**
- * Combined detection - uses multiple methods for robust detection
- */
-export function detectPulsatingHotspot(
-  videoElement: HTMLVideoElement,
-  canvasElement: HTMLCanvasElement,
-  accentColor: 'green' | 'blue'
-): DetectionResult {
-  const ctx = canvasElement.getContext('2d', { willReadFrequently: true })
-  
-  if (!ctx || videoElement.readyState !== videoElement.HAVE_ENOUGH_DATA) {
-    return { confidence: 0, method: 'combined' }
-  }
-  
-  // Set canvas size to match video
-  canvasElement.width = videoElement.videoWidth
-  canvasElement.height = videoElement.videoHeight
-  
-  // Draw current video frame
-  ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height)
-  
-  // Get image data from center region (where user points camera)
-  const centerX = canvasElement.width / 2
-  const centerY = canvasElement.height / 2
-  const sampleSize = Math.min(canvasElement.width, canvasElement.height) * 0.4
-  
-  const startX = Math.floor(centerX - sampleSize / 2)
-  const startY = Math.floor(centerY - sampleSize / 2)
-  
-  try {
-    const imageData = ctx.getImageData(startX, startY, sampleSize, sampleSize)
-    
-    // Define target color
-    const targetColor: ColorTarget = accentColor === 'green'
-      ? { r: 22, g: 132, b: 71, name: 'green' }
-      : { r: 70, g: 169, b: 216, name: 'blue' }
-    
-    // Try QR code detection first (most reliable)
-    const qrHotspotId = detectQRCode(imageData)
-    if (qrHotspotId) {
-      return {
-        confidence: 100,
-        method: 'qr',
-        hotspotId: qrHotspotId
-      }
-    }
-    
-    // Use multiple visual detection methods
-    const colorScore = detectByColor(imageData, targetColor)
-    const brightnessScore = detectByBrightness(imageData)
-    const patternScore = detectCircularPattern(imageData, targetColor)
-    
-    // Weighted combination
-    const combinedScore = (
-      colorScore * 0.4 +
-      brightnessScore * 0.3 +
-      patternScore * 0.3
-    )
-    
-    return {
-      confidence: Math.min(100, combinedScore),
-      method: 'combined'
-    }
-  } catch (err) {
-    console.error('Detection error:', err)
-    return { confidence: 0, method: 'combined' }
-  }
-}
+// ── Stability smoother ─────────────────────────────────────────────────────
 
 /**
- * Temporal smoothing - prevents flickering by requiring stable detection
+ * Requires the same QR value to appear N times in a row before confirming.
+ * Prevents single-frame noise or partial reads from triggering.
  */
 export class DetectionSmoother {
-  private history: number[] = []
-  private readonly historySize = 5
-  
-  addSample(confidence: number): number {
-    this.history.push(confidence)
-    
-    if (this.history.length > this.historySize) {
-      this.history.shift()
+  private lastValue = ''
+  private count = 0
+  private readonly required: number
+
+  constructor(requiredFrames = 3) {
+    this.required = requiredFrames
+  }
+
+  /**
+   * Feed a new detection value.
+   * Returns the confirmed value if stability threshold is met, otherwise null.
+   */
+  feed(value: string | null): string | null {
+    const v = value ?? ''
+
+    if (v === this.lastValue && v !== '') {
+      this.count++
+      if (this.count >= this.required) {
+        return v
+      }
+    } else {
+      this.lastValue = v
+      this.count = v ? 1 : 0
     }
-    
-    // Return average of recent samples
-    const sum = this.history.reduce((a, b) => a + b, 0)
-    return sum / this.history.length
+
+    return null
   }
-  
+
   reset(): void {
-    this.history = []
-  }
-  
-  isStable(threshold: number = 70): boolean {
-    if (this.history.length < 3) return false
-    
-    // Check if last 3 samples are all above threshold
-    return this.history.slice(-3).every(v => v >= threshold)
+    this.lastValue = ''
+    this.count = 0
   }
 }

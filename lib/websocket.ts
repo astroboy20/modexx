@@ -1,31 +1,39 @@
 /**
  * WebSocket Client Service
  * Real-time synchronization for two-device AR experience
+ *
+ * Architecture:
+ * - Singleton per player session (one socket connection per tab/device)
+ * - Reconnects automatically with exponential back-off
+ * - Emits events AFTER database writes (server is source of truth)
+ * - On reconnect, callers should re-fetch latest state from the API
  */
 
 import { io, Socket } from 'socket.io-client'
 
-interface ProgressData {
+// ── Event payload types ────────────────────────────────────────────────────
+
+export interface ProgressData {
   playerId: string
   monumentSlug: string
   hotspotId: string
   scannedAt: string
 }
 
-interface QuizCompleteData {
+export interface HotspotUnlockedData {
+  monumentSlug: string
+  hotspotId: string
+  timestamp: string
+}
+
+export interface QuizCompleteData {
   monumentSlug: string
   score: number
   correctCount: number
   timestamp: string
 }
 
-interface HotspotUnlockedData {
-  monumentSlug: string
-  hotspotId: string
-  timestamp: string
-}
-
-interface LeaderboardEntry {
+export interface LeaderboardEntryData {
   monumentSlug: string
   entry: {
     displayName: string
@@ -35,261 +43,251 @@ interface LeaderboardEntry {
   timestamp: string
 }
 
-type ProgressCallback = (data: ProgressData) => void
-type QuizCallback = (data: QuizCompleteData) => void
-type HotspotCallback = (data: HotspotUnlockedData) => void
-type LeaderboardCallback = (data: LeaderboardEntry) => void
-type ConnectionCallback = () => void
+type AnyCallback = (...args: unknown[]) => void
+
+// ── WebSocket Client class ─────────────────────────────────────────────────
 
 export class WebSocketClient {
   private socket: Socket | null = null
-  private playerId: string
-  private sessionToken: string
-  private reconnectAttempts = 0
-  private maxReconnectAttempts = 5
-  private reconnectDelay = 1000 // Start with 1 second
-  
+  private readonly playerId: string
+  private readonly sessionToken: string
+  private connectPromise: Promise<void> | null = null
+  private reconnectFetchCallbacks: Array<() => void> = []
+
   constructor(playerId: string, sessionToken: string) {
     this.playerId = playerId
     this.sessionToken = sessionToken
   }
 
-  /**
-   * Connect to WebSocket server
-   */
-  connect(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (this.socket?.connected) {
-        resolve()
-        return
-      }
+  // ── Connect ──────────────────────────────────────────────────────────────
 
-      const url = process.env.NEXT_PUBLIC_WS_URL || window.location.origin
-      
+  connect(): Promise<void> {
+    // Return existing in-flight promise to avoid double connections
+    if (this.connectPromise) return this.connectPromise
+
+    if (this.socket?.connected) return Promise.resolve()
+
+    this.connectPromise = new Promise<void>((resolve, reject) => {
+      const url =
+        typeof window !== 'undefined'
+          ? process.env.NEXT_PUBLIC_WS_URL || window.location.origin
+          : process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000'
+
       this.socket = io(url, {
         auth: {
           playerId: this.playerId,
-          sessionToken: this.sessionToken
+          sessionToken: this.sessionToken,
         },
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        reconnectionAttempts: Infinity
+        reconnectionDelayMax: 8000,
+        reconnectionAttempts: Infinity,
+        timeout: 10000,
       })
 
-      this.socket.on('connect', () => {
-        console.log('[WebSocket] Connected')
-        this.reconnectAttempts = 0
-        this.reconnectDelay = 1000
+      const onConnect = () => {
+        console.log('[WS] Connected:', this.socket?.id)
+        this.connectPromise = null
         resolve()
-      })
+      }
 
-      this.socket.on('connect_error', (error) => {
-        console.error('[WebSocket] Connection error:', error.message)
-        
-        this.reconnectAttempts++
-        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          console.error('[WebSocket] Max reconnection attempts reached')
-          reject(new Error('Failed to connect to WebSocket server'))
-        }
+      const onConnectError = (err: Error) => {
+        console.warn('[WS] Connection error:', err.message)
+        // Don't reject — socket.io will retry automatically
+        // Resolve anyway so callers aren't blocked
+        this.connectPromise = null
+        resolve()
+      }
+
+      this.socket.once('connect', onConnect)
+      this.socket.once('connect_error', onConnectError)
+
+      // After initial connection, set up persistent reconnect handler
+      this.socket.on('connect', () => {
+        console.log('[WS] Reconnected')
+        // Notify all registered callbacks so they can re-fetch missed updates
+        this.reconnectFetchCallbacks.forEach((cb) => {
+          try { cb() } catch {}
+        })
       })
 
       this.socket.on('disconnect', (reason) => {
-        console.log('[WebSocket] Disconnected:', reason)
-        
-        // Auto-reconnect for certain disconnect reasons
+        console.log('[WS] Disconnected:', reason)
         if (reason === 'io server disconnect') {
-          // Server closed connection, try to reconnect
-          setTimeout(() => this.connect(), this.reconnectDelay)
-          this.reconnectDelay = Math.min(this.reconnectDelay * 2, 10000) // Exponential backoff
+          // Server forced disconnect — attempt manual reconnect
+          this.socket?.connect()
         }
       })
 
-      this.socket.on('error', (error) => {
-        console.error('[WebSocket] Socket error:', error)
-      })
-
-      // Heartbeat
-      this.socket.on('pong', () => {
-        // Connection is alive
+      this.socket.on('error', (err) => {
+        console.error('[WS] Socket error:', err)
       })
     })
+
+    return this.connectPromise
   }
 
-  /**
-   * Disconnect from server
-   */
+  // ── Disconnect ───────────────────────────────────────────────────────────
+
   disconnect(): void {
+    this.connectPromise = null
     if (this.socket) {
+      this.socket.removeAllListeners()
       this.socket.disconnect()
       this.socket = null
-      console.log('[WebSocket] Disconnected')
     }
   }
 
-  /**
-   * Check if connected
-   */
+  // ── Connection state ─────────────────────────────────────────────────────
+
   isConnected(): boolean {
     return this.socket?.connected ?? false
   }
 
-  /**
-   * Join monument room for progress sync
-   */
+  // ── Register a callback to run after reconnect ────────────────────────────
+  // Use this to re-fetch missed updates from the API after a disconnect
+
+  onReconnectFetch(cb: () => void): () => void {
+    this.reconnectFetchCallbacks.push(cb)
+    return () => {
+      this.reconnectFetchCallbacks = this.reconnectFetchCallbacks.filter((f) => f !== cb)
+    }
+  }
+
+  // ── Rooms ────────────────────────────────────────────────────────────────
+
   joinMonument(monumentSlug: string): void {
     if (!this.socket?.connected) {
-      console.error('[WebSocket] Not connected')
+      console.warn('[WS] joinMonument called while disconnected')
       return
     }
-
     this.socket.emit('join:monument', { monumentSlug })
   }
 
+  leaveMonument(monumentSlug: string): void {
+    if (!this.socket) return
+    this.socket.emit('leave:monument', { monumentSlug })
+  }
+
+  // ── Emit events ──────────────────────────────────────────────────────────
+
   /**
-   * Send progress update (scanned hotspot)
+   * Notify other devices that a hotspot was scanned.
+   * Call AFTER the API route has persisted the record.
    */
   sendProgressUpdate(monumentSlug: string, hotspotId: string): void {
-    if (!this.socket?.connected) {
-      console.error('[WebSocket] Not connected')
-      return
-    }
-
+    if (!this.socket?.connected) return
     this.socket.emit('progress:update', {
       monumentSlug,
       hotspotId,
-      scannedAt: new Date().toISOString()
+      scannedAt: new Date().toISOString(),
     })
   }
 
   /**
-   * Send scanner detection event
+   * Alias used by the scanner page — same as sendProgressUpdate.
    */
   sendScannerDetection(monumentSlug: string, hotspotId: string): void {
-    if (!this.socket?.connected) {
-      console.error('[WebSocket] Not connected')
-      return
-    }
-
-    this.socket.emit('scanner:detected', {
-      monumentSlug,
-      hotspotId
-    })
+    if (!this.socket?.connected) return
+    this.socket.emit('scanner:detected', { monumentSlug, hotspotId })
   }
 
-  /**
-   * Send quiz submission
-   */
   sendQuizSubmission(monumentSlug: string, score: number, correctCount: number): void {
-    if (!this.socket?.connected) {
-      console.error('[WebSocket] Not connected')
-      return
-    }
-
-    this.socket.emit('quiz:submitted', {
-      monumentSlug,
-      score,
-      correctCount
-    })
+    if (!this.socket?.connected) return
+    this.socket.emit('quiz:submitted', { monumentSlug, score, correctCount })
   }
 
-  /**
-   * Send leaderboard update
-   */
-  sendLeaderboardUpdate(monumentSlug: string, entry: { displayName: string; score: number; correctCount: number }): void {
-    if (!this.socket?.connected) {
-      console.error('[WebSocket] Not connected')
-      return
-    }
-
-    this.socket.emit('leaderboard:update', {
-      monumentSlug,
-      entry
-    })
+  sendLeaderboardUpdate(
+    monumentSlug: string,
+    entry: { displayName: string; score: number; correctCount: number }
+  ): void {
+    if (!this.socket?.connected) return
+    this.socket.emit('leaderboard:update', { monumentSlug, entry })
   }
 
-  /**
-   * Listen for progress scans from other devices
-   */
-  onProgressScanned(callback: ProgressCallback): void {
-    if (!this.socket) return
-    this.socket.on('progress:scanned', callback)
-  }
-
-  /**
-   * Listen for hotspot unlocks
-   */
-  onHotspotUnlocked(callback: HotspotCallback): void {
-    if (!this.socket) return
-    this.socket.on('hotspot:unlocked', callback)
-  }
-
-  /**
-   * Listen for quiz completion
-   */
-  onQuizComplete(callback: QuizCallback): void {
-    if (!this.socket) return
-    this.socket.on('quiz:complete', callback)
-  }
-
-  /**
-   * Listen for leaderboard updates
-   */
-  onLeaderboardUpdate(callback: LeaderboardCallback): void {
-    if (!this.socket) return
-    this.socket.on('leaderboard:newEntry', callback)
-  }
-
-  /**
-   * Listen for connection events
-   */
-  onConnect(callback: ConnectionCallback): void {
-    if (!this.socket) return
-    this.socket.on('connect', callback)
-  }
-
-  onDisconnect(callback: ConnectionCallback): void {
-    if (!this.socket) return
-    this.socket.on('disconnect', callback)
-  }
-
-  /**
-   * Remove specific event listener
-   */
-  off(event: string, callback?: (...args: any[]) => void): void {
-    if (!this.socket) return
-    this.socket.off(event, callback)
-  }
-
-  /**
-   * Send heartbeat ping
-   */
   ping(): void {
     if (!this.socket?.connected) return
     this.socket.emit('ping')
   }
+
+  // ── Subscribe to events ──────────────────────────────────────────────────
+
+  onHotspotUnlocked(callback: (data: HotspotUnlockedData) => void): void {
+    if (!this.socket) return
+    this.socket.on('hotspot:unlocked', callback as AnyCallback)
+  }
+
+  onProgressScanned(callback: (data: ProgressData) => void): void {
+    if (!this.socket) return
+    this.socket.on('progress:scanned', callback as AnyCallback)
+  }
+
+  onQuizComplete(callback: (data: QuizCompleteData) => void): void {
+    if (!this.socket) return
+    this.socket.on('quiz:complete', callback as AnyCallback)
+  }
+
+  onLeaderboardUpdate(callback: (data: LeaderboardEntryData) => void): void {
+    if (!this.socket) return
+    this.socket.on('leaderboard:newEntry', callback as AnyCallback)
+  }
+
+  onConnect(callback: () => void): void {
+    if (!this.socket) return
+    this.socket.on('connect', callback)
+  }
+
+  onDisconnect(callback: () => void): void {
+    if (!this.socket) return
+    this.socket.on('disconnect', callback as AnyCallback)
+  }
+
+  // ── Remove listeners ─────────────────────────────────────────────────────
+
+  off(event: string, callback?: AnyCallback): void {
+    if (!this.socket) return
+    if (callback) {
+      this.socket.off(event, callback)
+    } else {
+      this.socket.off(event)
+    }
+  }
 }
 
-// Singleton instance management
-let wsClient: WebSocketClient | null = null
+// ── Singleton management ───────────────────────────────────────────────────
+
+let wsInstance: WebSocketClient | null = null
+let wsPlayerId: string | null = null
 
 /**
- * Get or create WebSocket client instance
+ * Get or create the WebSocket singleton.
+ * If the playerId changes (different user), the old connection is torn down.
  */
 export function getWebSocketClient(playerId: string, sessionToken: string): WebSocketClient {
-  if (!wsClient) {
-    wsClient = new WebSocketClient(playerId, sessionToken)
+  if (wsInstance && wsPlayerId !== playerId) {
+    // Different player — tear down stale connection
+    wsInstance.disconnect()
+    wsInstance = null
+    wsPlayerId = null
   }
-  return wsClient
+
+  if (!wsInstance) {
+    wsInstance = new WebSocketClient(playerId, sessionToken)
+    wsPlayerId = playerId
+  }
+
+  return wsInstance
 }
 
 /**
- * Disconnect and cleanup WebSocket client
+ * Disconnect and destroy the singleton.
+ * Call this on sign-out.
  */
 export function disconnectWebSocket(): void {
-  if (wsClient) {
-    wsClient.disconnect()
-    wsClient = null
+  if (wsInstance) {
+    wsInstance.disconnect()
+    wsInstance = null
+    wsPlayerId = null
   }
 }

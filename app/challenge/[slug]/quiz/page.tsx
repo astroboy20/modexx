@@ -138,6 +138,19 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
         completionSeconds,
         votersCardNumber: userRole === 'participant' ? votersCardNumber : undefined
       }),
+    }).then(async (r) => {
+      if (r.ok) {
+        // Broadcast leaderboard update via WebSocket
+        const { getWebSocketClient } = await import('@/lib/websocket')
+        const ws = getWebSocketClient(player.id, player.displayName)
+        if (!ws.isConnected()) await ws.connect().catch(() => {})
+        ws.sendLeaderboardUpdate(monument.slug, {
+          displayName: player.displayName,
+          score,
+          correctCount,
+        })
+        ws.sendQuizSubmission(monument.slug, score, correctCount)
+      }
     }).catch(() => {
       toast.error('Score saved locally, but failed to post to leaderboard.')
     })

@@ -11,7 +11,7 @@ import {
   markHotspotExplored,
 } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
-import { getWebSocketClient, disconnectWebSocket } from '@/lib/websocket'
+import { getWebSocketClient } from '@/lib/websocket'
 import SiteHeader from '@/components/SiteHeader'
 
 // ── Story Panel ────────────────────────────────────────────────────────────
@@ -111,95 +111,95 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
   const [showTopic, setShowTopic] = useState(false)
   const [scanDetected, setScanDetected] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [wsConnected, setWsConnected] = useState(false)
   
   const sortedHotspots = [...monument.hotspots].sort((a, b) => a.displayOrder - b.displayOrder)
   const currentHotspot = sortedHotspots[currentHotspotIndex]
   const allScanned = scannedHotspots.size === sortedHotspots.length
 
-  // Load progress from database on mount and setup WebSocket
+  // Stable hotspot IDs array — avoids re-running the effect on every render
+  // (sortedHotspots is re-created each render but its contents don't change)
+  const hotspotIds = sortedHotspots.map(h => h.id).join(',')
+
+  // Load progress from database and set up WebSocket
   useEffect(() => {
     const player = getClientSession()
     if (!player) return
 
     let isMounted = true
     let ws: ReturnType<typeof getWebSocketClient> | null = null
+    let removeReconnectCb: (() => void) | null = null
 
-    async function loadProgress() {
+    // Re-usable: fetch latest progress from DB and reconcile local state
+    async function loadProgress(showSpinner = true) {
+      if (showSpinner && isMounted) setLoading(true)
       try {
-        const res = await fetch(`/api/progress?monumentSlug=${monument.slug}`)
-        if (!res.ok || !isMounted) {
-          if (isMounted) setLoading(false)
-          return
-        }
-        
+        const res = await fetch(`/api/progress?monumentSlug=${monument.slug}`, { cache: 'no-store' })
+        if (!res.ok || !isMounted) return
+
         const { progress } = await res.json()
-        const scannedIds = new Set(progress.map((p: { hotspot_id: string }) => p.hotspot_id))
-        
+        const scannedIds = new Set<string>(
+          (progress as Array<{ hotspot_id: string }>).map(p => p.hotspot_id)
+        )
+
+        // Mirror to localStorage
+        scannedIds.forEach(id => markHotspotExplored(monument.slug, id))
+
         const savedIndices = new Set<number>()
         sortedHotspots.forEach((hotspot, index) => {
-          if (scannedIds.has(hotspot.id)) {
-            savedIndices.add(index)
-          }
+          if (scannedIds.has(hotspot.id)) savedIndices.add(index)
         })
-        
-        if (isMounted) {
-          setScannedHotspots(savedIndices)
-          
-          if (savedIndices.size > 0) {
-            // Move to next unscanned hotspot
-            const nextUnscanned = sortedHotspots.findIndex((_, i) => !savedIndices.has(i))
-            if (nextUnscanned !== -1) {
-              setCurrentHotspotIndex(nextUnscanned)
-            } else {
-              setCurrentHotspotIndex(sortedHotspots.length - 1)
-            }
-          }
+
+        if (!isMounted) return
+        setScannedHotspots(savedIndices)
+
+        if (savedIndices.size > 0) {
+          const nextUnscanned = sortedHotspots.findIndex((_, i) => !savedIndices.has(i))
+          setCurrentHotspotIndex(nextUnscanned !== -1 ? nextUnscanned : sortedHotspots.length - 1)
         }
       } catch (err) {
-        console.error('Failed to load progress:', err)
+        console.error('[Explore] Failed to load progress:', err)
       } finally {
-        if (isMounted) setLoading(false)
+        if (isMounted && showSpinner) setLoading(false)
       }
     }
-    
+
     async function setupWebSocket() {
-      if (!player) return // Guard clause
-      
+      if (!player) return
+
       try {
         ws = getWebSocketClient(player.id, player.displayName)
         await ws.connect()
-        
         if (!isMounted) return
-        
-        // Join monument room
+
         ws.joinMonument(monument.slug)
-        
-        // Listen for scans from other device
+
+        // On reconnect: re-fetch so we don't miss events that arrived while offline
+        removeReconnectCb = ws.onReconnectFetch(() => {
+          if (isMounted) loadProgress(false)
+        })
+
         const handleHotspotUnlocked = (data: { monumentSlug: string; hotspotId: string }) => {
           if (!isMounted || data.monumentSlug !== monument.slug) return
-          
-          console.log('[Explore] Received hotspot unlock:', data.hotspotId)
-          
-          // Find hotspot index
+          console.log('[Explore] hotspot:unlocked', data.hotspotId)
+
           const hotspotIndex = sortedHotspots.findIndex(h => h.id === data.hotspotId)
           if (hotspotIndex === -1) return
-          
-          // Update scanned hotspots
+
+          // Mirror to localStorage
+          markHotspotExplored(monument.slug, data.hotspotId)
+
           setScannedHotspots(prev => {
-            const newSet = new Set(prev)
-            newSet.add(hotspotIndex)
-            return newSet
+            if (prev.has(hotspotIndex)) return prev // already tracked
+            const next = new Set(prev)
+            next.add(hotspotIndex)
+            return next
           })
-          
-          // If it's the current hotspot, trigger animation
+
           setCurrentHotspotIndex(current => {
-            if (hotspotIndex === current) {
-              // Trigger scan animation
+            if (hotspotIndex === current && isMounted) {
               setScanDetected(true)
               setTimeout(() => {
                 if (isMounted) {
-                  markHotspotExplored(monument.slug, sortedHotspots[hotspotIndex].id)
                   setShowTopic(true)
                   setScanDetected(false)
                 }
@@ -208,114 +208,38 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
             return current
           })
         }
-        
+
         const handleConnect = () => {
-          if (isMounted) {
-            console.log('[Explore] WebSocket connected')
-            setWsConnected(true)
-          }
+          if (isMounted) console.log('[Explore] WS connected')
         }
-        
         const handleDisconnect = () => {
-          if (isMounted) {
-            console.log('[Explore] WebSocket disconnected')
-            setWsConnected(false)
-          }
+          if (isMounted) console.log('[Explore] WS disconnected')
         }
-        
+
         ws.onHotspotUnlocked(handleHotspotUnlocked)
         ws.onConnect(handleConnect)
         ws.onDisconnect(handleDisconnect)
-        
-        if (isMounted) {
-          setWsConnected(ws.isConnected())
-        }
+
       } catch (err) {
-        console.error('WebSocket setup failed:', err)
+        console.error('[Explore] WebSocket setup failed:', err)
       }
     }
-    
+
     loadProgress()
     setupWebSocket()
-    
+
     return () => {
       isMounted = false
+      if (removeReconnectCb) removeReconnectCb()
       if (ws) {
-        // Important: Don't call disconnectWebSocket() here!
-        // Just remove event listeners - socket stays alive for other components
         ws.off('hotspot:unlocked')
         ws.off('connect')
         ws.off('disconnect')
+        // Do NOT disconnect the socket — other pages share the singleton
       }
     }
-  }, [monument.slug, sortedHotspots])
-
-  // Handle when scan is detected (from WebSocket or click)
-  function handleScanDetected() {
-    setScanDetected(true)
-    
-    setTimeout(() => {
-      setScannedHotspots(prev => {
-        const newSet = new Set(prev)
-        newSet.add(currentHotspotIndex)
-        return newSet
-      })
-      markHotspotExplored(monument.slug, currentHotspot.id)
-      setShowTopic(true)
-      setScanDetected(false)
-    }, 1500)
-  }
-
-  // Handle scan completion (from click - saves to database and broadcasts)
-  async function handleScanComplete() {
-    if (scannedHotspots.has(currentHotspotIndex) || scanDetected) return
-    
-    setScanDetected(true)
-    
-    try {
-      // Save to database
-      await fetch('/api/progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          monumentSlug: monument.slug,
-          hotspotId: currentHotspot.id
-        })
-      })
-      
-      // Broadcast via WebSocket
-      const player = getClientSession()
-      if (player) {
-        try {
-          const ws = getWebSocketClient(player.id, player.displayName)
-          if (ws.isConnected()) {
-            ws.sendScannerDetection(monument.slug, currentHotspot.id)
-          }
-        } catch (wsErr) {
-          console.warn('WebSocket broadcast failed:', wsErr)
-        }
-      }
-      
-      setTimeout(() => {
-        setScannedHotspots(prev => {
-          const newSet = new Set(prev)
-          newSet.add(currentHotspotIndex)
-          return newSet
-        })
-        markHotspotExplored(monument.slug, currentHotspot.id)
-        setShowTopic(true)
-        setScanDetected(false)
-      }, 1500)
-    } catch (err) {
-      console.error('Failed to save scan:', err)
-      setScanDetected(false)
-    }
-  }
-
-  // Click handler
-  function handleHotspotClick() {
-    handleScanComplete()
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monument.slug, hotspotIds])
 
   function handleNext() {
     setShowTopic(false)
@@ -555,10 +479,12 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
                 </div>
               )}
 
-              {/* ONLY current pulsating hotspot - AR marker */}
+              {/* ONLY current pulsating hotspot - AR marker (display only, not clickable) */}
               {!allScanned && !showTopic && (
-                <button
+                <div
                   className="hotspot-btn hotspot-active hotspot-pulsating"
+                  role="img"
+                  aria-label={`Active hotspot: ${currentHotspot.label} — scan with AR scanner`}
                   style={{
                     left: `${currentHotspot.x}%`,
                     top: `${currentHotspot.y}%`,
@@ -569,18 +495,16 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
                     zIndex: 10,
                     boxShadow: scanDetected ? 'none' : `0 0 0 4px ${accentColor}33, 0 0 20px ${accentColor}66`,
                     animation: scanDetected ? 'none' : 'pulse-hotspot 2s infinite',
-                    cursor: 'pointer',
+                    cursor: 'default',
                     transition: 'all 0.3s ease',
                     fontSize: '18px',
-                    fontWeight: 700
+                    fontWeight: 700,
+                    pointerEvents: 'none',
                   }}
-                  onClick={handleHotspotClick}
-                  disabled={scanDetected}
-                  aria-label="Scan this location"
                   data-ar-marker={`hotspot-${currentHotspot.id}`}
                 >
                   {scanDetected ? <Scan size={16} /> : currentHotspot.displayOrder}
-                </button>
+                </div>
               )}
 
               {/* Discovered hotspots - faded */}
@@ -679,8 +603,24 @@ function OrganizerExplore({ monument }: OrganizerExploreProps) {
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
   const isComplete = exploredIds.length >= monument.hotspots.length
 
+  // Organizer: start from localStorage for instant render, then reconcile with DB
   useEffect(() => {
-    setExploredIds(getExploredHotspots(monument.slug))
+    // Show locally cached data immediately
+    const localIds = getExploredHotspots(monument.slug)
+    setExploredIds(localIds)
+
+    // Reconcile with DB in the background (organizer may use different devices)
+    fetch(`/api/progress?monumentSlug=${monument.slug}`, { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data?.progress) return
+        const dbIds: string[] = data.progress.map((p: { hotspot_id: string }) => p.hotspot_id)
+        // Merge: union of local + DB
+        const merged = Array.from(new Set([...localIds, ...dbIds]))
+        merged.forEach(id => markHotspotExplored(monument.slug, id))
+        setExploredIds(merged)
+      })
+      .catch(() => { /* non-fatal */ })
   }, [monument.slug])
 
   function openHotspot(hotspot: Hotspot) {
