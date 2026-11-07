@@ -66,178 +66,207 @@ async function renderScorecard(opts: {
   electionCfg: typeof ELECTION_CONFIG[keyof typeof ELECTION_CONFIG]
   countdown: string
 }): Promise<Blob> {
-  const W = 640, H = 980   // taller to fit election section fully
-  const canvas = document.createElement('canvas')
-  canvas.width  = W * 2   // 2× for retina
-  canvas.height = H * 2
-  canvas.style.width  = `${W}px`
-  canvas.style.height = `${H}px`
-  const ctx = canvas.getContext('2d')!
-  ctx.scale(2, 2)
-
   const { monument, displayName, score, correctCount, completionSeconds, rank, accentColor, electionCfg, countdown } = opts
   const mins = Math.floor(completionSeconds / 60)
   const secs = completionSeconds % 60
   const completedDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
-  // ── Background ──────────────────────────────────────────────────────
+  // Load all images up front in parallel
+  const [subjectImg, candImg] = await Promise.all([
+    loadImage(electionCfg.subjectImg).catch(() => null),
+    loadImage(electionCfg.portrait).catch(() => null),
+  ])
+
+  // ── Tight layout — calculate height from content ──────────────────────
+  // Sections: topBar(48) + identity(120) + divider(16) + score(120) + stats(56) + election(116) + cta(52) + bottomBar(36)
+  const W  = 390   // phone width @ 1x
+  const PAD = 20
+
+  const TOPBAR_H  = 48
+  const IDENT_H   = 120   // portrait thumb + info
+  const DIV_Y     = TOPBAR_H + IDENT_H + 8
+  const SCORE_Y   = DIV_Y + 12        // @name
+  const BIG_Y     = SCORE_Y + 90      // big number baseline
+  const LABEL_Y   = BIG_Y + 28
+  const STATS_Y   = LABEL_Y + 24
+  const STATS_H   = 52
+  const ELEC_Y    = STATS_Y + STATS_H + 16
+  const ELEC_H    = 108
+  const CTA_Y     = ELEC_Y + ELEC_H + 24
+  const CTA_H     = 44
+  const BOT_Y     = CTA_Y + CTA_H + 12
+  const BOT_H     = 34
+  const H         = BOT_Y + BOT_H
+
+  const DPR = 3   // 3× for sharp output
+  const canvas = document.createElement('canvas')
+  canvas.width  = W * DPR
+  canvas.height = H * DPR
+  const ctx = canvas.getContext('2d')!
+  ctx.scale(DPR, DPR)
+
+  // ── Background ────────────────────────────────────────────────────────
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, W, H)
 
-  // ── Top bar ─────────────────────────────────────────────────────────
+  // ── Top bar ───────────────────────────────────────────────────────────
   ctx.fillStyle = accentColor
-  ctx.fillRect(0, 0, W, 52)
+  ctx.fillRect(0, 0, W, TOPBAR_H)
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 20px Arial, sans-serif'
-  ctx.fillText('modexx.', 24, 34)
-  ctx.font = 'bold 11px Arial'
-  ctx.letterSpacing = '2px'
-  const badge = 'APC'
-  ctx.strokeStyle = 'rgba(255,255,255,0.7)'
-  ctx.lineWidth = 1.5
-  const bw = ctx.measureText(badge).width + 20
-  ctx.strokeRect(W - bw - 24, 16, bw, 22)
-  ctx.fillText(badge, W - bw - 14, 31)
-  ctx.letterSpacing = '0px'
+  ctx.font = 'bold 18px Arial'
+  ctx.textAlign = 'left'
+  ctx.fillText('modexx.', PAD, 31)
+  // APC badge
+  ctx.font = 'bold 10px Arial'
+  const bw = ctx.measureText('APC').width + 16
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)'
+  ctx.lineWidth = 1.2
+  ctx.strokeRect(W - bw - PAD, 14, bw, 20)
+  ctx.fillText('APC', W - bw - PAD + 8, 27)
 
-  // ── Subject portrait ─────────────────────────────────────────────────
-  try {
-    const subjectImg = await loadImage(electionCfg.subjectImg)
-    // Draw in a 88×110 rounded rect on the left
-    const px = 24, py = 68, pw = 88, ph = 110
+  // ── Subject identity ──────────────────────────────────────────────────
+  const iy = TOPBAR_H + 12
+  if (subjectImg) {
+    const pw = 72, ph = 90
     ctx.save()
     ctx.beginPath()
-    ctx.roundRect(px, py, pw, ph, 6)
+    roundRect(ctx, PAD, iy, pw, ph, 6)
     ctx.clip()
-    // maintain aspect ratio, fill from top
-    const scale = Math.max(pw / subjectImg.width, ph / subjectImg.height)
-    const sw = subjectImg.width * scale, sh = subjectImg.height * scale
-    ctx.drawImage(subjectImg, px + (pw - sw) / 2, py, sw, sh)
+    const sc = Math.max(pw / subjectImg.width, ph / subjectImg.height)
+    ctx.drawImage(subjectImg, PAD + (pw - subjectImg.width * sc) / 2, iy, subjectImg.width * sc, subjectImg.height * sc)
     ctx.restore()
-  } catch { /* skip if image fails */ }
-
-  // Monument info beside portrait
+  }
   ctx.fillStyle = accentColor
-  ctx.font = 'bold 12px Arial'
-  ctx.fillText(monument.name, 126, 88)
+  ctx.font = 'bold 11px Arial'
+  ctx.fillText(monument.name, 106, iy + 18)
   ctx.fillStyle = '#111111'
-  ctx.font = 'bold 18px Arial'
-  ctx.fillText(monument.subject, 126, 112)
+  ctx.font = 'bold 16px Arial'
+  ctx.fillText(monument.subject, 106, iy + 40)
   ctx.fillStyle = '#777777'
   ctx.font = '12px Arial'
-  ctx.fillText(monument.office, 126, 132)
+  ctx.fillText(monument.office, 106, iy + 60)
 
-  // ── Divider ──────────────────────────────────────────────────────────
+  // ── Divider ───────────────────────────────────────────────────────────
   ctx.fillStyle = accentColor
-  ctx.fillRect(24, 196, W - 48, 3)
+  ctx.fillRect(PAD, DIV_Y, W - PAD * 2, 2)
 
-  // ── Score section ────────────────────────────────────────────────────
+  // ── Score ─────────────────────────────────────────────────────────────
   ctx.fillStyle = '#888888'
-  ctx.font = '13px Arial'
+  ctx.font = '12px Arial'
   ctx.textAlign = 'center'
-  ctx.fillText(`@${displayName}`, W / 2, 228)
+  ctx.fillText(`@${displayName}`, W / 2, SCORE_Y + 16)
+
+  // Score — measure text to centre the "800 / 1,000" group properly
+  const scoreStr = String(score)
+  const denomStr = ' / 1,000'
+  ctx.font = 'bold 64px Arial'
+  const scoreW = ctx.measureText(scoreStr).width
+  ctx.font = '18px Arial'
+  const denomW = ctx.measureText(denomStr).width
+  const groupW = scoreW + denomW
+  const groupX = (W - groupW) / 2
 
   ctx.fillStyle = accentColor
-  ctx.font = `bold 82px Arial`
-  ctx.fillText(String(score), W / 2 - 30, 318)
+  ctx.font = 'bold 64px Arial'
+  ctx.textAlign = 'left'
+  ctx.fillText(scoreStr, groupX, BIG_Y)
 
   ctx.fillStyle = '#aaaaaa'
-  ctx.font = '24px Arial'
-  ctx.fillText('/ 1,000', W / 2 + 62, 318)
+  ctx.font = '18px Arial'
+  ctx.fillText(denomStr, groupX + scoreW, BIG_Y - 4)  // slight offset for baseline alignment
+
+  ctx.textAlign = 'center'
 
   ctx.fillStyle = '#aaaaaa'
-  ctx.font = '11px Arial'
-  ctx.letterSpacing = '2px'
-  ctx.fillText('POINTS SCORED', W / 2, 342)
-  ctx.letterSpacing = '0px'
+  ctx.font = '10px Arial'
+  ctx.fillText('POINTS SCORED', W / 2, LABEL_Y)
 
-  // ── Stats row ────────────────────────────────────────────────────────
+  // ── Stats ─────────────────────────────────────────────────────────────
   const stats = [
-    { value: `${correctCount}/10`, label: 'CORRECT' },
-    { value: '10/10',              label: 'EXPLORED' },
-    { value: `${mins}m ${secs}s`,  label: 'TIME' },
-    ...(rank ? [{ value: `#${rank}`, label: 'RANK' }] : []),
+    { v: `${correctCount}/10`, l: 'CORRECT' },
+    { v: '10/10',              l: 'EXPLORED' },
+    { v: `${mins}m ${secs}s`,  l: 'TIME' },
+    ...(rank ? [{ v: `#${rank}`, l: 'RANK' }] : []),
   ]
-  const statW = (W - 48) / stats.length
+  const sw = (W - PAD * 2) / stats.length
   stats.forEach((s, i) => {
-    const cx = 24 + statW * i + statW / 2
+    const cx = PAD + sw * i + sw / 2
     ctx.fillStyle = accentColor
-    ctx.font = 'bold 20px Arial'
-    ctx.fillText(s.value, cx, 390)
+    ctx.font = 'bold 17px Arial'
+    ctx.textAlign = 'center'
+    ctx.fillText(s.v, cx, STATS_Y + 22)
     ctx.fillStyle = '#aaaaaa'
-    ctx.font = '10px Arial'
-    ctx.letterSpacing = '1px'
-    ctx.fillText(s.label, cx, 408)
-    ctx.letterSpacing = '0px'
+    ctx.font = '9px Arial'
+    ctx.fillText(s.l, cx, STATS_Y + 38)
     if (i < stats.length - 1) {
       ctx.fillStyle = '#e4e9e5'
-      ctx.fillRect(24 + statW * (i + 1) - 1, 370, 1, 44)
+      ctx.fillRect(PAD + sw * (i + 1) - 0.5, STATS_Y + 4, 1, 38)
     }
   })
 
-  // ── Election section ─────────────────────────────────────────────────
-  const ey = 432
-  ctx.fillStyle = `${accentColor}18`
-  roundRect(ctx, 24, ey, W - 48, 110, 10)
+  // ── Election section ──────────────────────────────────────────────────
+  ctx.fillStyle = `${accentColor}15`
+  roundRect(ctx, PAD, ELEC_Y, W - PAD * 2, ELEC_H, 10)
   ctx.fill()
-  ctx.strokeStyle = `${accentColor}40`
-  ctx.lineWidth = 1.5
-  roundRect(ctx, 24, ey, W - 48, 110, 10)
+  ctx.strokeStyle = `${accentColor}35`
+  ctx.lineWidth = 1.2
+  roundRect(ctx, PAD, ELEC_Y, W - PAD * 2, ELEC_H, 10)
   ctx.stroke()
 
-  // Candidate portrait circle
-  try {
-    const candImg = await loadImage(electionCfg.portrait)
+  // Candidate circle
+  const cx_ = PAD + 46, cy_ = ELEC_Y + ELEC_H / 2
+  if (candImg) {
     ctx.save()
     ctx.beginPath()
-    ctx.arc(80, ey + 55, 36, 0, Math.PI * 2)
+    ctx.arc(cx_, cy_, 34, 0, Math.PI * 2)
     ctx.clip()
-    const cs = Math.max(72 / candImg.width, 72 / candImg.height)
-    const cw = candImg.width * cs, ch = candImg.height * cs
-    ctx.drawImage(candImg, 80 - cw / 2, ey + 55 - ch / 2, cw, ch)
+    const cs = Math.max(68 / candImg.width, 68 / candImg.height)
+    ctx.drawImage(candImg, cx_ - candImg.width * cs / 2, cy_ - candImg.height * cs / 2, candImg.width * cs, candImg.height * cs)
     ctx.restore()
-    // Circle border
-    ctx.beginPath()
-    ctx.arc(80, ey + 55, 36, 0, Math.PI * 2)
-    ctx.strokeStyle = accentColor
-    ctx.lineWidth = 2.5
-    ctx.stroke()
-  } catch { /* skip */ }
+  }
+  ctx.beginPath()
+  ctx.arc(cx_, cy_, 34, 0, Math.PI * 2)
+  ctx.strokeStyle = accentColor
+  ctx.lineWidth = 2
+  ctx.stroke()
 
   ctx.textAlign = 'left'
+  const tx = PAD + 96
   ctx.fillStyle = accentColor
-  ctx.font = 'bold 15px Arial'
-  ctx.fillText(electionCfg.cta, 132, ey + 40)
+  ctx.font = 'bold 14px Arial'
+  ctx.fillText(electionCfg.cta, tx, ELEC_Y + 34)
   ctx.fillStyle = '#555555'
-  ctx.font = '12px Arial'
-  ctx.fillText(electionCfg.electionLabel, 132, ey + 60)
+  ctx.font = '11px Arial'
+  ctx.fillText(electionCfg.electionLabel, tx, ELEC_Y + 54)
+
   // Countdown pill
+  const pillW = 138, pillH = 24
   ctx.fillStyle = accentColor
-  roundRect(ctx, 132, ey + 72, 160, 26, 13)
+  roundRect(ctx, tx, ELEC_Y + 64, pillW, pillH, 12)
   ctx.fill()
   ctx.fillStyle = '#ffffff'
-  ctx.font = 'bold 11px Arial'
+  ctx.font = 'bold 10px Arial'
   ctx.textAlign = 'center'
-  ctx.fillText(`⏱ ${countdown}`, 132 + 80, ey + 89)
+  ctx.fillText(`⏱ ${countdown}`, tx + pillW / 2, ELEC_Y + 80)
 
-  // ── CTA ──────────────────────────────────────────────────────────────
+  // ── CTA ───────────────────────────────────────────────────────────────
   ctx.textAlign = 'center'
   ctx.fillStyle = '#111111'
-  ctx.font = 'bold 16px Arial'
-  ctx.fillText('Can you beat my score?', W / 2, 576)
-  ctx.fillStyle = '#aaaaaa'
-  ctx.font = '12px Arial'
-  ctx.fillText(`modexx.app/monuments/${monument.slug}`, W / 2, 596)
-
-  // ── Bottom bar ───────────────────────────────────────────────────────
-  ctx.fillStyle = '#f7f9f7'
-  ctx.fillRect(0, H - 40, W, 40)
+  ctx.font = 'bold 14px Arial'
+  ctx.fillText('Can you beat my score?', W / 2, CTA_Y + 18)
   ctx.fillStyle = '#aaaaaa'
   ctx.font = '11px Arial'
+  ctx.fillText(`modexx.app/monuments/${monument.slug}`, W / 2, CTA_Y + 36)
+
+  // ── Bottom bar ────────────────────────────────────────────────────────
+  ctx.fillStyle = '#f7f9f7'
+  ctx.fillRect(0, BOT_Y, W, BOT_H)
+  ctx.fillStyle = '#aaaaaa'
+  ctx.font = '10px Arial'
   ctx.textAlign = 'left'
-  ctx.fillText(completedDate, 24, H - 16)
+  ctx.fillText(completedDate, PAD, BOT_Y + 22)
   ctx.textAlign = 'right'
-  ctx.fillText('Digital Monumental Experiences', W - 24, H - 16)
+  ctx.fillText('modexx. Digital Monumental Experiences', W - PAD, BOT_Y + 22)
 
   return new Promise(resolve => canvas.toBlob(b => resolve(b!), 'image/png', 1))
 }
@@ -309,28 +338,32 @@ export default function ScorecardPreview({
       const blob = await getBlob()
       const file = new File([blob], `modexx-scorecard.png`, { type: 'image/png' })
 
-      // Try native share with image (works on mobile)
+      const shareText = [
+        `🏛 ${monument.name}`,
+        ``,
+        `I scored ${score}/1,000 pts — ${correctCount}/10 correct${rank ? ` · Ranked #${rank}` : ''}.`,
+        ``,
+        `🗳 ${electionCfg.cta} — ${countdown}`,
+        ``,
+        `Can you beat my score?`,
+        `modexx.app/monuments/${monument.slug}`,
+      ].join('\n')
+
+      // Try native share with image attached (works on mobile)
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({
           title: `My ${monument.name} result`,
-          text: `${score}/1,000 pts · ${correctCount}/10 correct · ${electionCfg.cta}`,
+          text: shareText,
           files: [file],
         })
         return
       }
 
-      // Fallback: share URL only
-      const text = [
-        `I scored ${score}/1,000 on the ${monument.name} challenge.`,
-        `${correctCount}/10 correct${rank ? ` · Rank #${rank}` : ''}`,
-        `${electionCfg.cta} — ${countdown}`,
-        `modexx.app/monuments/${monument.slug}`,
-      ].join('\n')
-
+      // Fallback: share without image
       if (navigator.share) {
-        await navigator.share({ title: `My ${monument.name} result`, text })
+        await navigator.share({ title: `My ${monument.name} result`, text: shareText })
       } else {
-        await navigator.clipboard.writeText(text)
+        await navigator.clipboard.writeText(shareText)
         setCopied(true)
         setTimeout(() => setCopied(false), 2500)
       }
