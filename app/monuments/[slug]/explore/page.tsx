@@ -112,7 +112,7 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
   const [showTopic, setShowTopic] = useState(false)
   const [scanDetected, setScanDetected] = useState(false)
   const [loading, setLoading] = useState(true)
-  
+  const [showQR, setShowQR] = useState(false)
   const sortedHotspots = [...monument.hotspots].sort((a, b) => a.displayOrder - b.displayOrder)
   const currentHotspot = sortedHotspots[currentHotspotIndex]
   const allScanned = scannedHotspots.size === sortedHotspots.length
@@ -480,31 +480,111 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
                 </div>
               )}
 
-              {/* ONLY current pulsating hotspot - AR marker (display only, not clickable) */}
+              {/* ONLY current pulsating hotspot — small dot, tap to show scannable QR */}
               {!allScanned && !showTopic && (
                 <div
-                  className="hotspot-btn hotspot-active hotspot-pulsating"
-                  role="img"
-                  aria-label={`Active hotspot: ${currentHotspot.label} — scan with AR scanner`}
+                  role="button"
+                  aria-label={`Tap to show QR code for ${currentHotspot.label}`}
+                  onClick={() => setShowQR(true)}
                   style={{
+                    position: 'absolute',
                     left: `${currentHotspot.x}%`,
                     top: `${currentHotspot.y}%`,
-                    borderColor: accentColor,
-                    background: scanDetected ? `${accentColor}dd` : accentColor,
-                    color: '#fff',
-                    transform: scanDetected ? 'translate(-50%, -50%) scale(1)' : 'translate(-50%, -50%) scale(1.2)',
+                    transform: 'translate(-50%, -50%)',
                     zIndex: 10,
-                    boxShadow: scanDetected ? 'none' : `0 0 0 4px ${accentColor}33, 0 0 20px ${accentColor}66`,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: scanDetected ? `${accentColor}dd` : accentColor,
+                    border: `2px solid #fff`,
+                    boxShadow: scanDetected
+                      ? 'none'
+                      : `0 0 0 5px ${accentColor}44, 0 0 18px ${accentColor}88`,
                     animation: scanDetected ? 'none' : 'pulse-hotspot 2s infinite',
-                    cursor: 'default',
                     transition: 'all 0.3s ease',
-                    fontSize: '18px',
+                    color: '#fff',
+                    fontSize: '13px',
                     fontWeight: 700,
-                    pointerEvents: 'none',
                   }}
                   data-ar-marker={`hotspot-${currentHotspot.id}`}
                 >
                   {scanDetected ? <Scan size={16} /> : currentHotspot.displayOrder}
+                </div>
+              )}
+
+              {/* Full-screen QR overlay — shown when user taps the hotspot */}
+              {showQR && !allScanned && !showTopic && (
+                <div
+                  style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 1000,
+                    background: 'rgba(0,0,0,0.92)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '32px',
+                  }}
+                  onClick={() => setShowQR(false)}
+                >
+                  <div
+                    style={{
+                      background: '#fff',
+                      borderRadius: '20px',
+                      padding: '24px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '16px',
+                      maxWidth: '300px',
+                      width: '100%',
+                    }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {/* Pulsing ring around QR */}
+                    <div style={{
+                      borderRadius: '16px',
+                      border: `3px solid ${accentColor}`,
+                      padding: '8px',
+                      boxShadow: `0 0 0 6px ${accentColor}22, 0 0 30px ${accentColor}44`,
+                      animation: 'pulse-ring 2s infinite',
+                    }}>
+                      <HotspotQRCode
+                        slug={monument.slug}
+                        hotspotId={currentHotspot.id}
+                        size={200}
+                        bgColor="#ffffff"
+                        fgColor={accentColor}
+                      />
+                    </div>
+                    <p style={{ fontSize: '13px', fontWeight: 600, color: accentColor, textAlign: 'center' }}>
+                      {currentHotspot.chapter}: {currentHotspot.label}
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#666', textAlign: 'center' }}>
+                      Have the participant scan this QR code
+                    </p>
+                    <button
+                      onClick={() => setShowQR(false)}
+                      style={{
+                        padding: '10px 24px',
+                        background: accentColor,
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        width: '100%',
+                      }}
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -583,6 +663,10 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
             transform: translate(-50%, -50%) scale(1.4); 
             box-shadow: 0 0 0 8px ${accentColor}55, 0 0 30px ${accentColor}88;
           }
+        }
+        @keyframes pulse-ring {
+          0%, 100% { box-shadow: 0 0 0 6px ${accentColor}22, 0 0 30px ${accentColor}44; }
+          50%       { box-shadow: 0 0 0 12px ${accentColor}33, 0 0 40px ${accentColor}66; }
         }
         @keyframes spin {
           to { transform: rotate(360deg); }

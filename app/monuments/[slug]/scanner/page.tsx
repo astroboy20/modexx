@@ -29,6 +29,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
   const [monument,     setMonument]     = useState<Monument | null>(null)
   const [phase,        setPhase]        = useState<Phase>('loading')
   const [targetLabel,  setTargetLabel]  = useState('')
+  const [targetHotspotId, setTargetHotspotId] = useState('')
   const [errorMsg,     setErrorMsg]     = useState('')
   const [detectedLabel,setDetectedLabel] = useState('')
 
@@ -71,6 +72,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
         if (!next) { setPhase('no-target'); return }
 
         targetHotspotIdRef.current = next.id
+        setTargetHotspotId(next.id)
         setTargetLabel(next.label)
         setPhase('scanning')
       } catch (err) {
@@ -174,10 +176,9 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
   // Build the iframe URL — everything the HTML page needs comes via query params
   const iframeParams = new URLSearchParams({
     slug,
-    hotspotId: targetHotspotIdRef.current ?? '',
+    hotspotId: targetHotspotId,
     label:     targetLabel,
     accent:    monument.accent,
-    mind:      `/${slug}.mind`,
   })
   const iframeSrc = `/ar-scanner.html?${iframeParams}`
 
