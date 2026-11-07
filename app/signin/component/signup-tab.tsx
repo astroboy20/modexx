@@ -96,42 +96,27 @@ function SignUpTab({ redirect }: { redirect: string }) {
       <div className="form-field">
         <label className="form-label">I am a</label>
         <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-          <button
-            type="button"
-            onClick={() => setUserRole('participant')}
-            className={`role-btn${userRole === 'participant' ? ' role-btn--active' : ''}`}
-            style={{
-              flex: 1,
-              padding: '12px',
-              border: userRole === 'participant' ? '2px solid #168447' : '2px solid var(--line)',
-              background: userRole === 'participant' ? '#eaf2ee' : 'var(--paper)',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            Participant
-          </button>
-          <button
-            type="button"
-            onClick={() => setUserRole('organizer')}
-            className={`role-btn${userRole === 'organizer' ? ' role-btn--active' : ''}`}
-            style={{
-              flex: 1,
-              padding: '12px',
-              border: userRole === 'organizer' ? '2px solid #46a9d8' : '2px solid var(--line)',
-              background: userRole === 'organizer' ? '#e7f2f8' : 'var(--paper)',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-          >
-            Organizer
-          </button>
+          {(['participant', 'organizer'] as const).map((role) => (
+            <button
+              key={role}
+              type="button"
+              onClick={() => setUserRole(role)}
+              style={{
+                flex: 1, padding: '12px',
+                border: userRole === role
+                  ? `2px solid ${role === 'participant' ? '#168447' : '#46a9d8'}`
+                  : '2px solid var(--line)',
+                background: userRole === role
+                  ? (role === 'participant' ? '#eaf2ee' : '#e7f2f8')
+                  : 'var(--paper)',
+                borderRadius: '8px', fontSize: '14px', fontWeight: 500,
+                cursor: 'pointer', transition: 'all 0.2s',
+                textTransform: 'capitalize',
+              }}
+            >
+              {role}
+            </button>
+          ))}
         </div>
       </div>
 

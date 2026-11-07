@@ -192,33 +192,52 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
       {showVoterCardModal && (
         <div className="confirm-overlay" role="dialog" aria-modal="true" aria-label="Voter card collection">
           <div className="confirm-box" style={{ maxWidth: '450px' }}>
-            <h3 style={{ marginBottom: '12px' }}>Enter Your Voter's Card Number</h3>
-            <p style={{ color: 'var(--ink-light)', marginBottom: '20px', fontSize: '14px' }}>
-              This information will be shown in the admin dashboard along with your name.
+            <h3 style={{ marginBottom: '8px' }}>Your Voter&apos;s Card Number</h3>
+            <p style={{ color: 'var(--ink-light)', marginBottom: '4px', fontSize: '14px' }}>
+              Enter your 19-character VIN printed on your Permanent Voter Card (PVC).
+            </p>
+            <p style={{ color: 'var(--muted)', marginBottom: '20px', fontSize: '12px' }}>
+              Find it below your photo on the front of your PVC card.
             </p>
             <input
               type="text"
               value={votersCardNumber}
-              onChange={(e) => setVotersCardNumber(e.target.value)}
+              onChange={(e) => setVotersCardNumber(e.target.value.toUpperCase().replace(/\s/g, '').slice(0, 19))}
               placeholder="e.g. 90F5B4C39A987654321"
               style={{
                 width: '100%',
                 padding: '12px',
-                borderRadius: '6px',
-                border: '2px solid var(--line)',
-                fontSize: '14px',
-                marginBottom: '20px',
-                fontFamily: 'monospace'
+                borderRadius: '8px',
+                border: votersCardNumber.length > 0 && votersCardNumber.length !== 19
+                  ? '2px solid #ef4444'
+                  : votersCardNumber.length === 19
+                    ? '2px solid #168447'
+                    : '2px solid var(--line)',
+                fontSize: '15px',
+                marginBottom: '6px',
+                fontFamily: 'monospace',
+                letterSpacing: '0.08em',
+                outline: 'none',
               }}
               autoFocus
             />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <span style={{ fontSize: '12px', color: votersCardNumber.length === 19 ? '#168447' : votersCardNumber.length > 0 ? '#ef4444' : 'var(--muted)' }}>
+                {votersCardNumber.length}/19 characters
+                {votersCardNumber.length === 19 && ' ✓'}
+              </span>
+              {votersCardNumber.length > 0 && !/^[A-Z0-9]+$/.test(votersCardNumber) && (
+                <span style={{ fontSize: '12px', color: '#ef4444' }}>Letters and numbers only</span>
+              )}
+            </div>
             <div className="confirm-actions">
               <button 
                 className="button button-dark" 
                 onClick={() => { setShowVoterCardModal(false); finalSubmit() }}
-                disabled={!votersCardNumber.trim() || submitting}
+                disabled={votersCardNumber.length !== 19 || !/^[A-Z0-9]{19}$/.test(votersCardNumber) || submitting}
+                style={{ opacity: votersCardNumber.length === 19 && /^[A-Z0-9]{19}$/.test(votersCardNumber) ? 1 : 0.5 }}
               >
-                {submitting ? 'Submitting...' : 'Submit Challenge'}
+                {submitting ? 'Submitting…' : 'Submit Challenge'}
               </button>
               <button 
                 className="button" 

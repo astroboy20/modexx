@@ -124,10 +124,29 @@ export default function ScorecardPreview({
               <div className="sc-apc-badge">APC</div>
             </div>
 
-            {/* Monument identity */}
+            {/* Monument identity — uses actual portrait photo */}
             <div className="sc-monument-section">
-              <div className="sc-monument-art" style={{ background: monument.accent === 'green' ? '#eaf2ee' : '#e7f2f8' }}>
-                <div className="sc-figure" style={{ background: accentColor }} />
+              <div className="sc-monument-art" style={{ 
+                background: monument.accent === 'green' ? '#eaf2ee' : '#e7f2f8',
+                overflow: 'hidden',
+                borderRadius: '8px',
+              }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={monument.slug === 'tinubu' ? '/tinubu.png' : '/sanwo-olu.png'}
+                  alt={monument.subject}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none'
+                    const parent = (e.target as HTMLImageElement).parentElement
+                    if (parent) {
+                      const fallback = document.createElement('div')
+                      fallback.className = 'sc-figure'
+                      fallback.style.background = accentColor
+                      parent.appendChild(fallback)
+                    }
+                  }}
+                />
               </div>
               <div className="sc-monument-info">
                 <p className="sc-challenge-name" style={{ color: accentColor }}>{monument.name}</p>
@@ -176,54 +195,31 @@ export default function ScorecardPreview({
               )}
             </div>
 
-            {/* Election Section */}
+            {/* Election countdown */}
             <div style={{ 
-              margin: '20px 0', 
-              padding: '16px', 
-              background: `${accentColor}10`, 
-              borderRadius: '8px',
-              border: `2px solid ${accentColor}30`,
-              textAlign: 'center'
+              margin: '16px 0 0', 
+              padding: '14px 16px', 
+              background: `${accentColor}12`, 
+              borderRadius: '10px',
+              border: `1.5px solid ${accentColor}30`,
+              textAlign: 'center',
             }}>
-              <div style={{ 
-                width: '80px', 
-                height: '80px', 
-                borderRadius: '50%', 
-                margin: '0 auto 12px',
-                background: '#fff',
-                border: `3px solid ${accentColor}`,
-                overflow: 'hidden',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                  src={deputyGovernorInfo.image} 
-                  alt={deputyGovernorInfo.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  onError={(e) => {
-                    // Fallback to placeholder
-                    (e.target as HTMLImageElement).src = '/placeholder-user.jpg'
-                  }}
-                />
-              </div>
-              <p style={{ fontSize: '16px', fontWeight: 600, marginBottom: '4px', color: accentColor }}>
-                {deputyGovernorInfo.message}
+              <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: accentColor, marginBottom: '6px' }}>
+                🗳 Your Vote Counts
               </p>
-              <p style={{ fontSize: '12px', color: 'var(--ink-light)', marginBottom: '8px' }}>
-                2027 Lagos Gubernatorial Election
+              <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--ink, #111)' }}>
+                Get your Permanent Voter Card (PVC)
               </p>
               <div style={{ 
                 display: 'inline-block',
-                padding: '6px 16px',
+                padding: '5px 14px',
                 background: accentColor,
                 color: '#fff',
                 borderRadius: '20px',
-                fontSize: '13px',
-                fontWeight: 600
+                fontSize: '12px',
+                fontWeight: 700,
               }}>
-                ⏱ {countdown} to election
+                ⏱ {countdown} to 2027 election
               </div>
             </div>
 
