@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MindAR Target Compiler</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #111; color: #fff; }
+    button { padding: 12px 24px; background: #168447; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; margin: 8px; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #log { margin-top: 20px; background: #222; padding: 16px; border-radius: 8px; white-space: pre-wrap; min-height: 100px; font-size: 13px; }
+    progress { width: 100%; height: 20px; margin-top: 8px; }
+    input[type=text] { padding: 8px; width: 200px; background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; }
+  </style>
+
+  <!-- importmap MUST come before any module script -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+    }
+  }
+  </script>
+
+  <!-- Load MindAR classes and expose compile() BEFORE button is clickable -->
+  <script type="module">
+    import { MindARThree } from 'mindar-image-three';
+
+    // Also try to get Compiler from the same bundle or the core build
+    let CompilerClass = null;
+
+    async function ensureCompiler() {
+      if (CompilerClass) return CompilerClass;
+      try {
+        // Try named export from same bundle first
+        const mod = await import('mindar-image-three');
+        if (mod.Compiler) { CompilerClass = mod.Compiler; return CompilerClass; }
+      } catch(e) { /* fall through */ }
+      try {
+        // Core build (no three dependency) — more likely to export Compiler
+        const mod2 = await import('https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js');
+        if (mod2.Compiler) { CompilerClass = mod2.Compiler; return CompilerClass; }
+        if (mod2.default?.Compiler) { CompilerClass = mod2.default.Compiler; return CompilerClass; }
+      } catch(e) { /* fall through */ }
+      throw new Error('Could not load Compiler from mind-ar bundle. Check console for details.');
+    }
+
+    // Expose compile globally — defined inside module so we do it explicitly
+    window.compile = async function() {
+      const fileInput = document.getElementById('imageInput');
+      const filenameInput = document.getElementById('filename');
+      const log = document.getElementById('log');
+      const bar = document.getElementById('bar');
+      const btn = document.getElementById('compileBtn');
+
+      if (!fileInput.files[0]) { log.textContent = 'ERROR: Please select an image file first.'; return; }
+      const outName = filenameInput.value.trim() || fileInput.files[0].name.replace(/\.[^.]+$/, '');
+
+      btn.disabled = true;
+      bar.style.display = 'block';
+      bar.value = 0;
+      log.textContent = 'Loading MindAR Compiler...\n';
+
+      try {
+        const Compiler = await ensureCompiler();
+        log.textContent += 'Compiler ready.\n';
+
+        // Load image from file input
+        const url = URL.createObjectURL(fileInput.files[0]);
+        const img = new Image();
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+        log.textContent += `Image loaded: ${img.width}x${img.height}px\n`;
+        log.textContent += 'Compiling image targets (this takes 20-90 seconds on first run)...\n';
+
+        const compiler = new Compiler();
+        await compiler.compileImageTargets([img], (progress) => {
+          bar.value = progress;
+          // Update progress line in place
+          const lines = log.textContent.split('\n');
+          const progIdx = lines.findIndex(l => l.startsWith('Progress:'));
+          const progLine = `Progress: ${progress.toFixed(1)}%`;
+          if (progIdx >= 0) lines[progIdx] = progLine;
+          else lines.push(progLine);
+          log.textContent = lines.join('\n');
+        });
+
+        log.textContent += '\nExporting .mind data...\n';
+        const buffer = await compiler.exportData();
+
+        // Trigger download
+        const blob = new Blob([buffer], { type: 'application/octet-stream' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = outName + '.mind';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        log.textContent += `\n✅ Done! "${outName}.mind" downloaded (${(buffer.byteLength / 1024).toFixed(1)} KB)\n`;
+        log.textContent += `\nNow move ${outName}.mind into your project's public/ folder, then repeat for the other portrait.`;
+      } catch (err) {
+        log.textContent += `\n❌ ERROR: ${err.message}\n`;
+        console.error(err);
+      }
+
+      btn.disabled = false;
+      bar.style.display = 'none';
+    };
+
+    // Signal that the module loaded OK
+    document.getElementById('log').textContent = '✅ MindAR loaded. Select an image and click Compile & Download.';
+    document.getElementById('compileBtn').disabled = false;
+  </script>
+</head>
+<body>
+  <h2>🎯 MindAR Target Compiler</h2>
+  <p>Compile portrait images into <code>.mind</code> files for AR tracking.</p>
+  <ol>
+    <li>Select <code>tinubu.png</code> from your <code>public/</code> folder</li>
+    <li>Type <code>tinubu</code> in the filename box</li>
+    <li>Click <strong>Compile &amp; Download</strong> — wait up to 90 seconds</li>
+    <li>Move the downloaded <code>tinubu.mind</code> to <code>public/tinubu.mind</code></li>
+    <li>Repeat with <code>sanwo-olu.png</code> → <code>sanwo-olu.mind</code></li>
+  </ol>
+
+  <div style="margin: 16px 0">
+    <input type="file" id="imageInput" accept="image/*" style="color:#fff; margin-bottom: 10px; display: block">
+    <input type="text" id="filename" placeholder="Output filename (e.g. tinubu)">
+  </div>
+
+  <!-- disabled until module loads -->
+  <button id="compileBtn" onclick="compile()" disabled>Compile &amp; Download</button>
+
+  <progress id="bar" value="0" max="100" style="display:none"></progress>
+  <div id="log">Loading MindAR module... (may take a few seconds)</div>
+</body>
+</html>
