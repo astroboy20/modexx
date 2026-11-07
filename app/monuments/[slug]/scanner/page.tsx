@@ -28,20 +28,12 @@ import { getClientSession } from '@/lib/session-client'
 import { markHotspotExplored } from '@/lib/storage'
 import { getWebSocketClient } from '@/lib/websocket'
 
-// ── MindAR global types (v1.1.x CDN build exposes window.MINDAR) ────────────
+// ── MindAR global types ───────────────────────────────────────────────────
 
 declare global {
   interface Window {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    THREE: any
-    MINDAR: {
-      IMAGE: {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        MindARThree: new (options: any) => MindARThreeInstance
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        Compiler: new () => MindARCompiler
-      }
-    }
+    __mindARThreeClass__: any
   }
 }
 
@@ -56,74 +48,77 @@ interface MindARAnchor {
   onTargetLost?: () => void
 }
 
-interface MindARCompiler {
-  compileImageTargets(
-    images: HTMLImageElement[],
-    progress: (p: number) => void
-  ): Promise<unknown[]>
-  exportData(): Promise<ArrayBuffer>
-}
-
 // ── Phase type ─────────────────────────────────────────────────────────────
 
 type Phase =
   | 'loading'      // waiting for monument + progress API
-  | 'compiling'    // loading script + compiling portrait to .mind
-  | 'starting'     // starting camera / MindAR
+  | 'starting'     // loading MindAR + starting camera
   | 'scanning'     // camera active, watching for portrait
   | 'saving'       // portrait detected, persisting to DB
   | 'success'      // saved, showing success screen
   | 'no-target'    // all hotspots already scanned
   | 'error'        // something went wrong
 
-// ── MindAR script loader ────────────────────────────────────────────────────
+// ── MindAR loader ─────────────────────────────────────────────────────────
 //
-// mind-ar v1.1.x (NOT v1.2+) is used here because:
-//   - v1.2+ switched to ES modules only — no window.MINDAR global
-//   - v1.1.5 ships a self-contained UMD build that sets window.MINDAR
-//   - v1.1.5 bundles Three.js internally; no separate Three load needed
-//
-// CDN: https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js
+// MindAR v1.2+ is ES-module only.
+// We inject an importmap + <script type="module"> that imports MindARThree
+// and stashes it on window so the React component can use it.
+// Pre-compiled .mind files (in /public) eliminate the need for Compiler.
 
-let mindARScriptPromise: Promise<void> | null = null
+let mindARLoadPromise: Promise<void> | null = null
 
-function loadMindARScript(): Promise<void> {
-  // Return the shared in-flight promise — guards against concurrent calls
-  if (mindARScriptPromise) return mindARScriptPromise
+function loadMindARClass(): Promise<void> {
+  if (mindARLoadPromise) return mindARLoadPromise
 
-  mindARScriptPromise = new Promise<void>((resolve, reject) => {
-    // Already initialised (page reload / HMR)
-    if (window.MINDAR?.IMAGE) { resolve(); return }
+  mindARLoadPromise = new Promise<void>((resolve, reject) => {
+    if (window.__mindARThreeClass__) { resolve(); return }
 
-    const SRC = 'https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js'
-    const existing = document.querySelector(`script[src="${SRC}"]`) as HTMLScriptElement | null
+    // Importmap must be injected before any module script
+    const mapId = '__mindar-importmap__'
+    if (!document.getElementById(mapId)) {
+      const map = document.createElement('script')
+      map.id = mapId
+      map.type = 'importmap'
+      map.textContent = JSON.stringify({
+        imports: {
+          'three': 'https://unpkg.com/three@0.160.0/build/three.module.js',
+          'three/addons/': 'https://unpkg.com/three@0.160.0/examples/jsm/',
+          'mindar-image-three': 'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js',
+        }
+      })
+      document.head.prepend(map)
+    }
 
-    if (existing) {
-      // Script tag exists but may still be downloading — wait for its events
-      if (window.MINDAR?.IMAGE) { resolve(); return }
-      existing.addEventListener('load', () => resolve(), { once: true })
-      existing.addEventListener('error', () => reject(new Error('MindAR script failed to load')), { once: true })
+    // Module script stashes MindARThree on window then fires a custom event
+    const scriptId = '__mindar-loader__'
+    if (document.getElementById(scriptId)) {
+      // Already injected — poll until the class appears
+      const deadline = Date.now() + 20000
+      const id = setInterval(() => {
+        if (window.__mindARThreeClass__) { clearInterval(id); resolve() }
+        else if (Date.now() > deadline) { clearInterval(id); reject(new Error('MindAR load timed out')) }
+      }, 100)
       return
     }
 
     const script = document.createElement('script')
-    script.src = SRC
-    script.async = true
-    script.onload = () => {
-      // v1.1.x sets window.MINDAR synchronously in onload
-      if (window.MINDAR?.IMAGE) {
-        resolve()
-      } else {
-        reject(new Error('MindAR script loaded but window.MINDAR.IMAGE is not defined'))
-      }
-    }
-    script.onerror = () => reject(new Error('Failed to download MindAR script — check network/CSP'))
+    script.id = scriptId
+    script.type = 'module'
+    script.textContent = `
+      import { MindARThree } from 'mindar-image-three';
+      window.__mindARThreeClass__ = MindARThree;
+      window.dispatchEvent(new Event('__mindar-ready__'));
+    `
+    window.addEventListener('__mindar-ready__', () => resolve(), { once: true })
+    script.addEventListener('error', () => reject(new Error('MindAR module failed to load — check network')), { once: true })
     document.head.appendChild(script)
+
+    setTimeout(() => reject(new Error('MindAR load timed out after 20s')), 20000)
   })
 
-  // Reset on failure so "Try Again" can re-attempt
-  mindARScriptPromise.catch(() => { mindARScriptPromise = null })
-  return mindARScriptPromise
+  mindARLoadPromise.catch(() => { mindARLoadPromise = null })
+  return mindARLoadPromise
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -142,7 +137,6 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
 
   const [monument, setMonument] = useState<Monument | null>(null)
   const [phase, setPhase] = useState<Phase>('loading')
-  const [compileProgress, setCompileProgress] = useState(0)
   const [targetLabel, setTargetLabel] = useState('')
   const [detectedLabel, setDetectedLabel] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
@@ -155,7 +149,6 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
   const lastTriggerRef = useRef<number>(0)
   const isSavingRef = useRef(false)
   const isMountedRef = useRef(true)
-  const objectUrlRef = useRef<string | null>(null)
 
   // ── Cleanup on unmount ─────────────────────────────────────────────────────
 
@@ -172,11 +165,6 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
     try { mindARRef.current?.stop() } catch { /* ignore */ }
     mindARRef.current = null
     trackingStartRef.current = 0
-
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current)
-      objectUrlRef.current = null
-    }
   }, [])
 
   // ── Step 1: load monument ──────────────────────────────────────────────────
@@ -214,7 +202,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
 
         targetHotspotIdRef.current = next.id
         setTargetLabel(next.label)
-        setPhase('compiling')       // signal to next effect
+        setPhase('starting')       // signal to next effect
       } catch (err) {
         if (cancelled) return
         console.error('[Scanner] fetchTarget:', err)
@@ -227,11 +215,11 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
     return () => { cancelled = true }
   }, [monument, slug])
 
-  // ── Step 3: compile portrait + start MindAR ────────────────────────────────
-  // Runs only once when phase becomes 'compiling'
+  // ── Step 3: start MindAR with pre-built .mind file ────────────────────────
+  // Runs only once when phase becomes 'starting'
 
   useEffect(() => {
-    if (phase !== 'compiling') return
+    if (phase !== 'starting') return
     if (!monument || !targetHotspotIdRef.current || !containerRef.current) return
 
     let cancelled = false
@@ -239,41 +227,19 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
 
     async function initAR() {
       try {
-        // Load MindAR v1.1.5 UMD script (exposes window.MINDAR global)
-        await loadMindARScript()
+        // Load MindARThree class via importmap + ES module script in <head>
+        await loadMindARClass()
         if (cancelled || !isMountedRef.current) return
 
-        // Load portrait image
-        const portraitSrc = monument!.slug === 'tinubu' ? '/tinubu.png' : '/sanwo-olu.png'
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        await new Promise<void>((resolve, reject) => {
-          img.onload = () => resolve()
-          img.onerror = () => reject(new Error('Failed to load portrait image'))
-          img.src = portraitSrc
-        })
-        if (cancelled || !isMountedRef.current) return
+        const MindARThree = window.__mindARThreeClass__
 
-        // Compile portrait → .mind buffer in the browser
-        const compiler = new window.MINDAR.IMAGE.Compiler()
-        await compiler.compileImageTargets([img], (p: number) => {
-          if (isMountedRef.current) setCompileProgress(Math.round(p))
-        })
-        if (cancelled || !isMountedRef.current) return
-
-        const buffer = await compiler.exportData()
-        if (cancelled || !isMountedRef.current) return
-
-        // Create a blob URL for the compiled target data
-        const blob = new Blob([buffer])
-        const targetSrc = URL.createObjectURL(blob)
-        objectUrlRef.current = targetSrc
+        // Use pre-compiled .mind file from /public — no runtime compilation needed
+        const mindFileSrc = monument!.slug === 'tinubu' ? '/tinubu.mind' : '/sanwo-olu.mind'
 
         // Create MindAR instance
-        setPhase('starting')
-        const mindAR = new window.MINDAR.IMAGE.MindARThree({
+        const mindAR = new MindARThree({
           container: containerRef.current!,
-          imageTargetSrc: targetSrc,
+          imageTargetSrc: mindFileSrc,
           maxTrack: 1,
           uiLoading: 'no',
           uiScanning: 'no',
@@ -504,9 +470,8 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
             <button
               onClick={() => {
                 setErrorMsg('')
-                setCompileProgress(0)
                 isSavingRef.current = false
-                setPhase('compiling')
+                setPhase('starting')
               }}
               style={{
                 background: accentColor, color: '#fff', border: 'none',
@@ -681,7 +646,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
         </div>
       )}
 
-      {/* Loading / compiling / starting overlay */}
+      {/* Loading / starting overlay */}
       {!isScanning && (
         <div style={{
           position: 'absolute', inset: 0, zIndex: 25,
@@ -700,29 +665,10 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
           </div>
 
           <h2 style={{ fontSize: '22px', fontWeight: 700, marginBottom: '8px' }}>
-            {phase === 'loading'   && 'Loading…'}
-            {phase === 'compiling' && 'Preparing AR…'}
-            {phase === 'starting'  && 'Starting camera…'}
-            {phase === 'saving'    && 'Unlocking hotspot…'}
+            {phase === 'loading'  && 'Loading…'}
+            {phase === 'starting' && 'Starting camera…'}
+            {phase === 'saving'   && 'Unlocking hotspot…'}
           </h2>
-
-          {phase === 'compiling' && (
-            <>
-              <p style={{ fontSize: '13px', opacity: 0.6, marginBottom: '16px' }}>
-                Analysing portrait image ({compileProgress}%)
-              </p>
-              <div style={{
-                width: '200px', height: '4px',
-                background: 'rgba(255,255,255,0.15)', borderRadius: '2px', overflow: 'hidden',
-              }}>
-                <div style={{
-                  width: `${compileProgress}%`, height: '100%',
-                  background: accentColor, borderRadius: '2px',
-                  transition: 'width 0.3s ease-out',
-                }} />
-              </div>
-            </>
-          )}
 
           {(phase === 'starting' || phase === 'saving') && (
             <div style={{
