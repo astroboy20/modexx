@@ -5,7 +5,7 @@
  *
  * Flow:
  * 1. Fetch which hotspot is currently active (the pulsating one) from the progress API
- * 2. Load Three.js + MindAR via CDN, then compile the portrait image into a
+ * 2. Dynamically import Three.js + MindAR (npm packages), then compile the portrait image into a
  *    MindAR image target in the browser (no pre-built .mind file needed)
  * 3. Start the MindAR Controller — it opens the device back camera and looks
  *    for the portrait image in the viewfinder
@@ -28,7 +28,7 @@ import { getClientSession } from '@/lib/session-client'
 import { markHotspotExplored } from '@/lib/storage'
 import { getWebSocketClient } from '@/lib/websocket'
 
-// ── MindAR global types (loaded via CDN at runtime) ────────────────────────
+// ── MindAR global types (v1.1.x CDN build exposes window.MINDAR) ────────────
 
 declare global {
   interface Window {
@@ -36,14 +36,9 @@ declare global {
     THREE: any
     MINDAR: {
       IMAGE: {
-        MindARThree: new (options: {
-          container: HTMLElement
-          imageTargetSrc: string
-          maxTrack?: number
-          uiLoading?: string
-          uiScanning?: string
-          uiError?: string
-        }) => MindARThreeInstance
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        MindARThree: new (options: any) => MindARThreeInstance
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         Compiler: new () => MindARCompiler
       }
     }
@@ -73,7 +68,7 @@ interface MindARCompiler {
 
 type Phase =
   | 'loading'      // waiting for monument + progress API
-  | 'compiling'    // loading CDN scripts + compiling portrait to .mind
+  | 'compiling'    // loading script + compiling portrait to .mind
   | 'starting'     // starting camera / MindAR
   | 'scanning'     // camera active, watching for portrait
   | 'saving'       // portrait detected, persisting to DB
@@ -81,76 +76,54 @@ type Phase =
   | 'no-target'    // all hotspots already scanned
   | 'error'        // something went wrong
 
-// ── CDN script loaders ─────────────────────────────────────────────────────
+// ── MindAR script loader ────────────────────────────────────────────────────
+//
+// mind-ar v1.1.x (NOT v1.2+) is used here because:
+//   - v1.2+ switched to ES modules only — no window.MINDAR global
+//   - v1.1.5 ships a self-contained UMD build that sets window.MINDAR
+//   - v1.1.5 bundles Three.js internally; no separate Three load needed
+//
+// CDN: https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js
 
-// Track in-flight script loads so a second call doesn't resolve before the
-// script has actually executed (the script tag exists but onload hasn't fired yet).
-const scriptLoadPromises = new Map<string, Promise<void>>()
+let mindARScriptPromise: Promise<void> | null = null
 
-function loadScript(src: string): Promise<void> {
-  // Return the existing promise if already in-flight or completed
-  if (scriptLoadPromises.has(src)) {
-    return scriptLoadPromises.get(src)!
-  }
+function loadMindARScript(): Promise<void> {
+  // Return the shared in-flight promise — guards against concurrent calls
+  if (mindARScriptPromise) return mindARScriptPromise
 
-  const promise = new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`)
+  mindARScriptPromise = new Promise<void>((resolve, reject) => {
+    // Already initialised (page reload / HMR)
+    if (window.MINDAR?.IMAGE) { resolve(); return }
+
+    const SRC = 'https://cdn.jsdelivr.net/npm/mind-ar@1.1.5/dist/mindar-image-three.prod.js'
+    const existing = document.querySelector(`script[src="${SRC}"]`) as HTMLScriptElement | null
+
     if (existing) {
-      // Tag exists but may still be loading — wait for its events
+      // Script tag exists but may still be downloading — wait for its events
+      if (window.MINDAR?.IMAGE) { resolve(); return }
       existing.addEventListener('load', () => resolve(), { once: true })
-      existing.addEventListener('error', () => reject(new Error(`Failed to load: ${src}`)), { once: true })
-      // If it already finished loading (readyState isn't a thing for scripts,
-      // but if MINDAR/THREE are already on window we can resolve immediately)
-      if (
-        (src.includes('three') && window.THREE) ||
-        (src.includes('mindar') && window.MINDAR?.IMAGE)
-      ) {
-        resolve()
-      }
+      existing.addEventListener('error', () => reject(new Error('MindAR script failed to load')), { once: true })
       return
     }
-    const s = document.createElement('script')
-    s.src = src
-    s.async = true
-    s.onload = () => resolve()
-    s.onerror = () => reject(new Error(`Failed to load: ${src}`))
-    document.head.appendChild(s)
-  })
 
-  scriptLoadPromises.set(src, promise)
-  return promise
-}
-
-/** Poll until window.MINDAR.IMAGE is set (it may be assigned a tick after onload) */
-function waitForMindAR(timeoutMs = 5000): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.MINDAR?.IMAGE) { resolve(); return }
-    const deadline = Date.now() + timeoutMs
-    const id = setInterval(() => {
+    const script = document.createElement('script')
+    script.src = SRC
+    script.async = true
+    script.onload = () => {
+      // v1.1.x sets window.MINDAR synchronously in onload
       if (window.MINDAR?.IMAGE) {
-        clearInterval(id)
         resolve()
-      } else if (Date.now() > deadline) {
-        clearInterval(id)
-        reject(new Error('MindAR did not initialise after script load'))
+      } else {
+        reject(new Error('MindAR script loaded but window.MINDAR.IMAGE is not defined'))
       }
-    }, 50)
+    }
+    script.onerror = () => reject(new Error('Failed to download MindAR script — check network/CSP'))
+    document.head.appendChild(script)
   })
-}
 
-async function ensureMindAR(): Promise<void> {
-  if (window.MINDAR?.IMAGE) return
-
-  // Three.js must load before MindAR
-  if (!window.THREE) {
-    await loadScript('https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.min.js')
-  }
-  await loadScript(
-    'https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js'
-  )
-
-  // window.MINDAR may be set a microtask after onload — poll briefly
-  await waitForMindAR()
+  // Reset on failure so "Try Again" can re-attempt
+  mindARScriptPromise.catch(() => { mindARScriptPromise = null })
+  return mindARScriptPromise
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -266,8 +239,8 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
 
     async function initAR() {
       try {
-        // Load CDN scripts
-        await ensureMindAR()
+        // Load MindAR v1.1.5 UMD script (exposes window.MINDAR global)
+        await loadMindARScript()
         if (cancelled || !isMountedRef.current) return
 
         // Load portrait image

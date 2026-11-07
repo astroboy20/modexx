@@ -6,6 +6,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  transpilePackages: ['mind-ar'],
 }
 
 export default nextConfig
