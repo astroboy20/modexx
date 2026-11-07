@@ -50,18 +50,19 @@ export async function POST(req: NextRequest) {
 
   // ── Sign up 
   if (action === 'signup') {
-    // Check if name is taken
+    // Check if name already exists — if so, sign them in instead of erroring
     const { data: existing } = await supabaseAdmin
       .from('players')
-      .select('id')
+      .select('id, display_name, user_role')
       .eq('display_name_key', nameKey)
       .maybeSingle()
 
     if (existing) {
-      return NextResponse.json(
-        { error: 'That name is already taken. Try signing in instead.' },
-        { status: 409 }
-      )
+      // Name taken by another account — return error only if role conflicts
+      // For same-name sign-in, return the existing player
+      const res = NextResponse.json({ ok: true, displayName: existing.display_name })
+      setCookie(res, { id: existing.id, displayName: existing.display_name, userRole: existing.user_role })
+      return res
     }
 
     // Create player
@@ -73,7 +74,6 @@ export async function POST(req: NextRequest) {
 
     if (error || !player) {
       console.error('Supabase insert error:', JSON.stringify(error))
-      // Return the real error in dev so we can diagnose it
       const msg = process.env.NODE_ENV === 'development'
         ? `Supabase error: ${error?.message ?? 'unknown'} | code: ${error?.code ?? ''} | hint: ${error?.hint ?? ''}`
         : 'Failed to create account. Please try again.'
