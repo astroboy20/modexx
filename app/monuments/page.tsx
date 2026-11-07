@@ -24,7 +24,7 @@ export default function MonumentsPage() {
                 <ArrowUpRight className="card-arrow" />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={monument.slug === 'tinubu' ? '/President-Bola-Ahmed-Tinubu.jpg' : '/sanwo-olu.png'}
+                  src={monument.slug === 'tinubu' ? '/tinubu-president.jpg' : '/sanwo-olu.png'}
                   alt={monument.subject}
                   style={{
                     position: 'absolute', inset: 0,

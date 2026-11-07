@@ -43,7 +43,7 @@ export default async function MonumentPage({ params }: { params: Promise<{ slug:
           <span className="detail-art-number">{slug === 'tinubu' ? '01' : '02'}</span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={slug === 'tinubu' ? '/President-Bola-Ahmed-Tinubu.jpg' : '/sanwo-olu.png'}
+            src={slug === 'tinubu' ? '/tinubu-president.jpg' : '/sanwo-olu.png'}
             alt={m.subject}
             style={{
               position: 'absolute', inset: 0,

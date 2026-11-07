@@ -26,14 +26,14 @@ function daysUntil(date: Date): string {
 
 const ELECTION_CONFIG = {
   tinubu: {
-    portrait:      '/President-Bola-Ahmed-Tinubu.jpg',
-    subjectImg:    '/tinubu.png',
+    portrait:      '/tinubu-president.jpg',
+    subjectImg:    '/tinubu-president.jpg',
     cta:           'Vote Tinubu 2027',
     electionDate:  PRESIDENTIAL_ELECTION,
     electionLabel: 'Presidential Election · Jan 16, 2027',
   },
   'sanwo-olu': {
-    portrait:      '/Obafemi-Hamzat.jpg',
+    portrait:      '/hamzat.jpg',
     subjectImg:    '/sanwo-olu.png',
     cta:           'Vote Hamzat 2027',
     electionDate:  LAGOS_ELECTION,
@@ -66,7 +66,7 @@ async function renderScorecard(opts: {
   electionCfg: typeof ELECTION_CONFIG[keyof typeof ELECTION_CONFIG]
   countdown: string
 }): Promise<Blob> {
-  const W = 640, H = 900
+  const W = 640, H = 980   // taller to fit election section fully
   const canvas = document.createElement('canvas')
   canvas.width  = W * 2   // 2× for retina
   canvas.height = H * 2
