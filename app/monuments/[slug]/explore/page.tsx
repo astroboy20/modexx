@@ -13,6 +13,7 @@ import {
 import { getClientSession } from '@/lib/session-client'
 import { getWebSocketClient } from '@/lib/websocket'
 import SiteHeader from '@/components/SiteHeader'
+import HotspotQRCode from '@/components/HotspotQRCode'
 
 // ── Story Panel ────────────────────────────────────────────────────────────
 
@@ -759,6 +760,8 @@ function OrganizerExplore({ monument }: OrganizerExploreProps) {
               {sortedHotspots.map((hotspot) => {
                 const explored = exploredIds.includes(hotspot.id)
                 const active = activeHotspot?.id === hotspot.id
+                // The next unexplored hotspot is the one participants need to scan
+                const isNextTarget = !explored && exploredIds.length === sortedHotspots.indexOf(hotspot)
                 return (
                   <button
                     key={hotspot.id}
@@ -770,12 +773,24 @@ function OrganizerExplore({ monument }: OrganizerExploreProps) {
                       background: explored ? accentColor : 'rgba(255,255,255,0.92)',
                       color: explored ? '#fff' : accentColor,
                       ...(active ? { transform: 'translate(-50%, -50%) scale(1.25)', zIndex: 10, boxShadow: `0 0 0 4px ${accentColor}33` } : {}),
+                      ...(isNextTarget ? { animation: 'pulse-hotspot-org 2s infinite', zIndex: 10 } : {}),
                     }}
                     onClick={() => openHotspot(hotspot)}
                     aria-label={`Chapter ${hotspot.displayOrder}: ${hotspot.label}${explored ? ' — explored' : ''}`}
                     title={`${hotspot.metaphor}: ${hotspot.label}`}
                   >
-                    {hotspot.displayOrder}
+                    {isNextTarget ? (
+                      /* Show QR code for the active scan target */
+                      <HotspotQRCode
+                        slug={monument.slug}
+                        hotspotId={hotspot.id}
+                        size={64}
+                        bgColor="transparent"
+                        fgColor={accentColor}
+                      />
+                    ) : (
+                      hotspot.displayOrder
+                    )}
                   </button>
                 )
               })}

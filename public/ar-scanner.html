@@ -7,21 +7,12 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
-    #container { width: 100vw; height: 100vh; position: relative; }
 
-    /* Force MindAR's injected video and canvas to fill the container */
-    #container video {
-      position: absolute !important;
-      top: 0 !important; left: 0 !important;
-      width: 100% !important; height: 100% !important;
-      object-fit: cover !important;
-      z-index: 0 !important;
-    }
-    #container canvas {
-      position: absolute !important;
-      top: 0 !important; left: 0 !important;
-      width: 100% !important; height: 100% !important;
-      z-index: 1 !important;
+    #video {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      z-index: 1;
     }
 
     #overlay {
@@ -37,40 +28,36 @@
     .spinner {
       width: 48px; height: 48px; border-radius: 50%;
       border: 4px solid rgba(255,255,255,0.15);
-      border-top-color: var(--accent, #168447);
+      border-top-color: var(--accent);
       animation: spin 0.8s linear infinite;
       margin: 0 auto 20px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-
     #status-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
     #status-sub   { font-size: 13px; opacity: 0.6; }
 
-    /* scan frame on top of camera */
-    #scan-frame {
+    /* scan frame */
+    #scan-ui {
       position: fixed; inset: 0; z-index: 50;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       pointer-events: none;
     }
-    #scan-frame.hidden { display: none; }
+    #scan-ui.hidden { display: none; }
 
-    .frame-box {
-      width: 260px; height: 350px;
-      position: relative;
-      border-radius: 12px;
+    .frame {
+      width: 260px; height: 260px; position: relative;
     }
     .corner {
       position: absolute; width: 28px; height: 28px;
     }
-    .corner.tl { top: 0;  left: 0;  border-top: 4px solid var(--accent, #168447); border-left: 4px solid var(--accent, #168447); border-radius: 6px 0 0 0; }
-    .corner.tr { top: 0;  right: 0; border-top: 4px solid var(--accent, #168447); border-right: 4px solid var(--accent, #168447); border-radius: 0 6px 0 0; }
-    .corner.bl { bottom: 0; left: 0;  border-bottom: 4px solid var(--accent, #168447); border-left: 4px solid var(--accent, #168447); border-radius: 0 0 0 6px; }
-    .corner.br { bottom: 0; right: 0; border-bottom: 4px solid var(--accent, #168447); border-right: 4px solid var(--accent, #168447); border-radius: 0 0 6px 0; }
-
+    .corner.tl { top:0;    left:0;  border-top:  4px solid var(--accent); border-left:  4px solid var(--accent); border-radius: 6px 0 0 0; }
+    .corner.tr { top:0;    right:0; border-top:  4px solid var(--accent); border-right: 4px solid var(--accent); border-radius: 0 6px 0 0; }
+    .corner.bl { bottom:0; left:0;  border-bottom: 4px solid var(--accent); border-left: 4px solid var(--accent); border-radius: 0 0 0 6px; }
+    .corner.br { bottom:0; right:0; border-bottom: 4px solid var(--accent); border-right: 4px solid var(--accent); border-radius: 0 0 6px 0; }
     .laser {
       position: absolute; left: 8px; right: 8px; height: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent, #168447), transparent);
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
       animation: laser 2.4s ease-in-out infinite;
     }
     @keyframes laser {
@@ -80,24 +67,32 @@
     }
 
     .hint {
-      position: fixed; bottom: 80px; left: 0; right: 0;
-      text-align: center; color: #fff;
+      margin-top: 24px; text-align: center; color: #fff;
       font-family: -apple-system, sans-serif;
-      pointer-events: none;
     }
-    .hint-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
-    .hint-sub   { font-size: 13px; opacity: 0.7; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+    .hint-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; text-shadow: 0 2px 8px rgba(0,0,0,0.9); }
+    .hint-sub   { font-size: 13px; opacity: 0.75; text-shadow: 0 2px 8px rgba(0,0,0,0.9); }
     .hint-badge {
       display: inline-block; margin-top: 10px;
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.3);
       border-radius: 20px; padding: 5px 14px;
       font-size: 12px; font-weight: 600;
     }
 
-    /* success flash */
+    /* wrong QR flash */
+    #wrong-flash {
+      position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%);
+      background: rgba(220,50,50,0.9); color: #fff;
+      padding: 10px 20px; border-radius: 20px;
+      font-size: 13px; font-weight: 600;
+      z-index: 200; opacity: 0;
+      transition: opacity 0.2s;
+    }
+    #wrong-flash.show { opacity: 1; }
+
+    /* success */
     #success {
-      position: fixed; inset: 0; z-index: 200;
+      position: fixed; inset: 0; z-index: 300;
       display: flex; align-items: center; justify-content: center;
       background: rgba(0,0,0,0.85);
       font-family: -apple-system, sans-serif;
@@ -113,32 +108,19 @@
     .success-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
     .success-sub   { font-size: 14px; opacity: 0.8; }
   </style>
-
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-      "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
-    }
-  }
-  </script>
 </head>
 <body>
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas" style="display:none"></canvas>
 
-  <!-- MindAR camera goes here -->
-  <div id="container"></div>
-
-  <!-- Loading overlay -->
   <div id="overlay">
     <div class="spinner"></div>
     <div id="status-title">Starting camera…</div>
     <div id="status-sub">Allow camera access when prompted</div>
   </div>
 
-  <!-- Scan frame (shown when camera is live) -->
-  <div id="scan-frame" class="hidden">
-    <div class="frame-box">
+  <div id="scan-ui" class="hidden">
+    <div class="frame">
       <div class="corner tl"></div>
       <div class="corner tr"></div>
       <div class="corner bl"></div>
@@ -146,13 +128,14 @@
       <div class="laser"></div>
     </div>
     <div class="hint">
-      <div class="hint-title">Aim at the portrait display</div>
-      <div class="hint-sub">Point your camera at the screen showing the pulsating hotspot</div>
+      <div class="hint-title">Scan the hotspot QR code</div>
+      <div class="hint-sub">Point at the glowing marker on the portrait screen</div>
       <div class="hint-badge" id="target-badge">Loading…</div>
     </div>
   </div>
 
-  <!-- Success flash -->
+  <div id="wrong-flash">Wrong hotspot — find the pulsating one</div>
+
   <div id="success" class="hidden">
     <div class="success-box">
       <div class="check">✅</div>
@@ -161,107 +144,101 @@
     </div>
   </div>
 
-  <script type="module">
-    import { MindARThree } from 'mindar-image-three';
+  <!-- jsQR from CDN — pure UMD, no module system needed -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script>
+    var params     = new URLSearchParams(location.search);
+    var slug       = params.get('slug')      || '';
+    var hotspotId  = params.get('hotspotId') || '';
+    var label      = params.get('label')     || '';
+    var accent     = params.get('accent') === 'blue' ? '#46a9d8' : '#168447';
 
-    // ── Read params from URL ──────────────────────────────────────────────
-    const params   = new URLSearchParams(location.search);
-    const slug     = params.get('slug')     || '';
-    const hotspotId = params.get('hotspotId') || '';
-    const label    = params.get('label')    || '';
-    const accent   = params.get('accent') === 'blue' ? '#46a9d8' : '#168447';
-    const mindSrc  = params.get('mind')    || `/${slug}.mind`;
-
-    // Apply accent colour
     document.documentElement.style.setProperty('--accent', accent);
-    document.getElementById('target-badge').textContent = label ? `Target: ${label}` : '';
+    document.getElementById('target-badge').textContent = label ? ('Target: ' + label) : '';
 
-    const STABLE_MS  = 800;
-    const COOLDOWN_MS = 4000;
-
-    let trackStart   = 0;
-    let lastTrigger  = 0;
-    let triggered    = false;
-    let mindarThree  = null;
+    var video   = document.getElementById('video');
+    var canvas  = document.getElementById('canvas');
+    var ctx     = canvas.getContext('2d');
+    var rafId   = null;
+    var done    = false;
+    var wrongCooldown = false;
 
     function setStatus(title, sub) {
       document.getElementById('status-title').textContent = title;
-      document.getElementById('status-sub').textContent   = sub  || '';
+      document.getElementById('status-sub').textContent   = sub || '';
     }
 
     function postToParent(type, data) {
-      window.parent.postMessage({ type, ...data }, '*');
+      try { window.parent.postMessage(Object.assign({ type: type }, data), '*'); } catch(e) {}
+    }
+
+    function showWrongFlash() {
+      if (wrongCooldown) return;
+      wrongCooldown = true;
+      var el = document.getElementById('wrong-flash');
+      el.classList.add('show');
+      setTimeout(function() {
+        el.classList.remove('show');
+        wrongCooldown = false;
+      }, 2000);
+    }
+
+    function onDetected() {
+      done = true;
+      if (rafId) cancelAnimationFrame(rafId);
+      video.srcObject && video.srcObject.getTracks().forEach(function(t){ t.stop(); });
+
+      document.getElementById('scan-ui').classList.add('hidden');
+      document.getElementById('success-label').textContent = label;
+      document.getElementById('success').classList.remove('hidden');
+
+      postToParent('AR_DETECTED', { hotspotId: hotspotId, slug: slug });
+    }
+
+    function scanFrame() {
+      if (done) return;
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: 'dontInvert'
+        });
+        if (code) {
+          // Expected URL pattern: .../monuments/<slug>/scan/<hotspotId>
+          var expected = '/monuments/' + slug + '/scan/' + hotspotId;
+          if (code.data.indexOf(expected) !== -1) {
+            onDetected();
+            return;
+          } else if (code.data.indexOf('/monuments/' + slug + '/scan/') !== -1) {
+            // It's a valid hotspot QR but the wrong one
+            showWrongFlash();
+          }
+        }
+      }
+      rafId = requestAnimationFrame(scanFrame);
     }
 
     async function init() {
       try {
-        setStatus('Loading AR…', 'Fetching image target');
-
-        // Fetch .mind as ArrayBuffer → Blob URL to avoid gzip corruption
-        const res = await fetch(mindSrc);
-        if (!res.ok) throw new Error(`Failed to fetch target file (${res.status})`);
-        const buf  = await res.arrayBuffer();
-        const blobUrl = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
-
-        setStatus('Starting camera…', 'Allow camera access when prompted');
-
-        mindarThree = new MindARThree({
-          container: document.getElementById('container'),
-          imageTargetSrc: blobUrl,
-          maxTrack: 1,
-          uiLoading: 'no',
-          uiScanning: 'no',
-          uiError: 'no',
+        var stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
         });
+        video.srcObject = stream;
+        await new Promise(function(resolve) { video.onloadedmetadata = resolve; });
+        await video.play();
 
-        const anchor = mindarThree.addAnchor(0);
-
-        anchor.onTargetFound = () => {
-          if (triggered) return;
-          console.log('[AR] target found');
-          trackStart = Date.now();
-        };
-
-        anchor.onTargetLost = () => {
-          console.log('[AR] target lost');
-          trackStart = 0;
-        };
-
-        await mindarThree.start();
-
-        // Camera is live — hide loading overlay, show scan frame
         document.getElementById('overlay').classList.add('hidden');
-        document.getElementById('scan-frame').classList.remove('hidden');
+        document.getElementById('scan-ui').classList.remove('hidden');
 
-        // Poll for stable track
-        const poll = setInterval(() => {
-          if (triggered || trackStart === 0) return;
-          const elapsed = Date.now() - trackStart;
-          const coolOk  = Date.now() - lastTrigger > COOLDOWN_MS;
-          if (elapsed >= STABLE_MS && coolOk) {
-            lastTrigger = Date.now();
-            clearInterval(poll);
-            onDetected();
-          }
-        }, 100);
-
-      } catch (err) {
-        console.error('[AR] init error:', err);
-        postToParent('AR_ERROR', { message: err.message });
+        scanFrame();
+      } catch(err) {
+        console.error('[Scanner]', err);
+        setStatus('Camera error', err.message || 'Could not access camera');
+        postToParent('AR_ERROR', { message: err.message || 'Camera access denied' });
       }
-    }
-
-    function onDetected() {
-      triggered = true;
-      try { mindarThree.stop(); } catch(e) {}
-
-      // Show success flash
-      document.getElementById('scan-frame').classList.add('hidden');
-      document.getElementById('success-label').textContent = label;
-      document.getElementById('success').classList.remove('hidden');
-
-      // Tell the parent React page
-      postToParent('AR_DETECTED', { hotspotId, slug });
     }
 
     init();
