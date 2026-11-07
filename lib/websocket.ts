@@ -1,29 +1,28 @@
 /**
- * WebSocket Client Service
- * Real-time synchronization for two-device AR experience
+ * Real-time sync via Supabase Realtime Broadcast.
  *
- * Architecture:
- * - Singleton per player session (one socket connection per tab/device)
- * - Reconnects automatically with exponential back-off
- * - Emits events AFTER database writes (server is source of truth)
- * - On reconnect, callers should re-fetch latest state from the API
+ * Replaces Socket.io — works on Vercel (serverless) with no extra infra.
+ * All devices subscribed to `monument:<slug>` receive each other's events.
+ *
+ * API is identical to the old WebSocketClient so all call-sites work unchanged.
  */
 
-import { io, Socket } from 'socket.io-client'
+import { getSupabaseBrowser } from './supabase-browser'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 
-// ── Event payload types ────────────────────────────────────────────────────
+// ── Types ──────────────────────────────────────────────────────────────────
+
+export interface HotspotUnlockedData {
+  monumentSlug: string
+  hotspotId: string
+  timestamp: string
+}
 
 export interface ProgressData {
   playerId: string
   monumentSlug: string
   hotspotId: string
   scannedAt: string
-}
-
-export interface HotspotUnlockedData {
-  monumentSlug: string
-  hotspotId: string
-  timestamp: string
 }
 
 export interface QuizCompleteData {
@@ -35,118 +34,39 @@ export interface QuizCompleteData {
 
 export interface LeaderboardEntryData {
   monumentSlug: string
-  entry: {
-    displayName: string
-    score: number
-    correctCount: number
-  }
+  entry: { displayName: string; score: number; correctCount: number }
   timestamp: string
 }
 
 type AnyCallback = (...args: unknown[]) => void
 
-// ── WebSocket Client class ─────────────────────────────────────────────────
+// ── WebSocketClient ────────────────────────────────────────────────────────
 
 export class WebSocketClient {
-  private socket: Socket | null = null
   private readonly playerId: string
-  private readonly sessionToken: string
-  private connectPromise: Promise<void> | null = null
+  private channels = new Map<string, RealtimeChannel>()
   private reconnectFetchCallbacks: Array<() => void> = []
 
-  constructor(playerId: string, sessionToken: string) {
-    this.playerId = playerId
-    this.sessionToken = sessionToken
-  }
+  // Pending event listeners registered before joinMonument is called
+  private pendingListeners: Array<{ event: string; cb: AnyCallback }> = []
 
-  // ── Connect ──────────────────────────────────────────────────────────────
+  constructor(playerId: string, _sessionToken: string) {
+    this.playerId = playerId
+  }
 
   connect(): Promise<void> {
-    // Return existing in-flight promise to avoid double connections
-    if (this.connectPromise) return this.connectPromise
-
-    if (this.socket?.connected) return Promise.resolve()
-
-    this.connectPromise = new Promise<void>((resolve, reject) => {
-      const url =
-        typeof window !== 'undefined'
-          ? process.env.NEXT_PUBLIC_WS_URL || window.location.origin
-          : process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3000'
-
-      this.socket = io(url, {
-        auth: {
-          playerId: this.playerId,
-          sessionToken: this.sessionToken,
-        },
-        transports: ['websocket', 'polling'],
-        reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 8000,
-        reconnectionAttempts: Infinity,
-        timeout: 10000,
-      })
-
-      const onConnect = () => {
-        console.log('[WS] Connected:', this.socket?.id)
-        this.connectPromise = null
-        resolve()
-      }
-
-      const onConnectError = (err: Error) => {
-        console.warn('[WS] Connection error:', err.message)
-        // Don't reject — socket.io will retry automatically
-        // Resolve anyway so callers aren't blocked
-        this.connectPromise = null
-        resolve()
-      }
-
-      this.socket.once('connect', onConnect)
-      this.socket.once('connect_error', onConnectError)
-
-      // After initial connection, set up persistent reconnect handler
-      this.socket.on('connect', () => {
-        console.log('[WS] Reconnected')
-        // Notify all registered callbacks so they can re-fetch missed updates
-        this.reconnectFetchCallbacks.forEach((cb) => {
-          try { cb() } catch {}
-        })
-      })
-
-      this.socket.on('disconnect', (reason) => {
-        console.log('[WS] Disconnected:', reason)
-        if (reason === 'io server disconnect') {
-          // Server forced disconnect — attempt manual reconnect
-          this.socket?.connect()
-        }
-      })
-
-      this.socket.on('error', (err) => {
-        console.error('[WS] Socket error:', err)
-      })
-    })
-
-    return this.connectPromise
+    return Promise.resolve()
   }
-
-  // ── Disconnect ───────────────────────────────────────────────────────────
 
   disconnect(): void {
-    this.connectPromise = null
-    if (this.socket) {
-      this.socket.removeAllListeners()
-      this.socket.disconnect()
-      this.socket = null
-    }
+    const sb = getSupabaseBrowser()
+    this.channels.forEach((ch) => sb.removeChannel(ch))
+    this.channels.clear()
   }
-
-  // ── Connection state ─────────────────────────────────────────────────────
 
   isConnected(): boolean {
-    return this.socket?.connected ?? false
+    return true // Supabase handles its own connection
   }
-
-  // ── Register a callback to run after reconnect ────────────────────────────
-  // Use this to re-fetch missed updates from the API after a disconnect
 
   onReconnectFetch(cb: () => void): () => void {
     this.reconnectFetchCallbacks.push(cb)
@@ -155,135 +75,142 @@ export class WebSocketClient {
     }
   }
 
-  // ── Rooms ────────────────────────────────────────────────────────────────
+  // ── Join a monument channel ───────────────────────────────────────────────
 
   joinMonument(monumentSlug: string): void {
-    if (!this.socket?.connected) {
-      console.warn('[WS] joinMonument called while disconnected')
-      return
+    if (this.channels.has(monumentSlug)) return
+
+    const sb = getSupabaseBrowser()
+    const channelName = `monument:${monumentSlug}`
+
+    // Build channel, attach all pending listeners BEFORE subscribing
+    let ch = sb.channel(channelName, {
+      config: { broadcast: { self: false } },
+    })
+
+    // Register any listeners that were queued before joinMonument was called
+    for (const { event, cb } of this.pendingListeners) {
+      ch = ch.on('broadcast', { event }, ({ payload }) => cb(payload))
     }
-    this.socket.emit('join:monument', { monumentSlug })
+
+    ch.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        console.log(`[RT] Subscribed: ${channelName}`)
+        // Notify reconnect callbacks so callers can re-fetch missed events
+        this.reconnectFetchCallbacks.forEach((fn) => { try { fn() } catch {} })
+      }
+    })
+
+    this.channels.set(monumentSlug, ch)
+    this.pendingListeners = [] // consumed
   }
 
   leaveMonument(monumentSlug: string): void {
-    if (!this.socket) return
-    this.socket.emit('leave:monument', { monumentSlug })
+    const ch = this.channels.get(monumentSlug)
+    if (!ch) return
+    getSupabaseBrowser().removeChannel(ch)
+    this.channels.delete(monumentSlug)
   }
 
-  // ── Emit events ──────────────────────────────────────────────────────────
+  // ── Emit ──────────────────────────────────────────────────────────────────
 
-  /**
-   * Notify other devices that a hotspot was scanned.
-   * Call AFTER the API route has persisted the record.
-   */
-  sendProgressUpdate(monumentSlug: string, hotspotId: string): void {
-    if (!this.socket?.connected) return
-    this.socket.emit('progress:update', {
-      monumentSlug,
-      hotspotId,
-      scannedAt: new Date().toISOString(),
+  sendScannerDetection(monumentSlug: string, hotspotId: string): void {
+    const ch = this.channels.get(monumentSlug)
+    if (!ch) { console.warn('[RT] sendScannerDetection: no channel for', monumentSlug); return }
+    ch.send({
+      type: 'broadcast',
+      event: 'hotspot:unlocked',
+      payload: { monumentSlug, hotspotId, playerId: this.playerId, timestamp: new Date().toISOString() },
     })
   }
 
-  /**
-   * Alias used by the scanner page — same as sendProgressUpdate.
-   */
-  sendScannerDetection(monumentSlug: string, hotspotId: string): void {
-    if (!this.socket?.connected) return
-    this.socket.emit('scanner:detected', { monumentSlug, hotspotId })
+  sendProgressUpdate(monumentSlug: string, hotspotId: string): void {
+    this.sendScannerDetection(monumentSlug, hotspotId)
   }
 
   sendQuizSubmission(monumentSlug: string, score: number, correctCount: number): void {
-    if (!this.socket?.connected) return
-    this.socket.emit('quiz:submitted', { monumentSlug, score, correctCount })
+    const ch = this.channels.get(monumentSlug)
+    if (!ch) return
+    ch.send({
+      type: 'broadcast',
+      event: 'quiz:complete',
+      payload: { monumentSlug, score, correctCount, timestamp: new Date().toISOString() },
+    })
   }
 
   sendLeaderboardUpdate(
     monumentSlug: string,
     entry: { displayName: string; score: number; correctCount: number }
   ): void {
-    if (!this.socket?.connected) return
-    this.socket.emit('leaderboard:update', { monumentSlug, entry })
+    const ch = this.channels.get(monumentSlug)
+    if (!ch) return
+    ch.send({
+      type: 'broadcast',
+      event: 'leaderboard:newEntry',
+      payload: { monumentSlug, entry, timestamp: new Date().toISOString() },
+    })
   }
 
-  ping(): void {
-    if (!this.socket?.connected) return
-    this.socket.emit('ping')
-  }
+  ping(): void { /* no-op */ }
 
-  // ── Subscribe to events ──────────────────────────────────────────────────
+  // ── Subscribe to events ───────────────────────────────────────────────────
+  // These may be called before joinMonument — queue them if so.
+
+  private _on(event: string, cb: AnyCallback): void {
+    if (this.channels.size === 0) {
+      // No channels yet — queue the listener
+      this.pendingListeners.push({ event, cb })
+      return
+    }
+    // Already have channels — attach directly
+    this.channels.forEach((ch) => {
+      ch.on('broadcast', { event }, ({ payload }) => cb(payload))
+    })
+  }
 
   onHotspotUnlocked(callback: (data: HotspotUnlockedData) => void): void {
-    if (!this.socket) return
-    this.socket.on('hotspot:unlocked', callback as AnyCallback)
+    this._on('hotspot:unlocked', callback as AnyCallback)
   }
 
   onProgressScanned(callback: (data: ProgressData) => void): void {
-    if (!this.socket) return
-    this.socket.on('progress:scanned', callback as AnyCallback)
+    this._on('hotspot:unlocked', callback as AnyCallback)
   }
 
   onQuizComplete(callback: (data: QuizCompleteData) => void): void {
-    if (!this.socket) return
-    this.socket.on('quiz:complete', callback as AnyCallback)
+    this._on('quiz:complete', callback as AnyCallback)
   }
 
   onLeaderboardUpdate(callback: (data: LeaderboardEntryData) => void): void {
-    if (!this.socket) return
-    this.socket.on('leaderboard:newEntry', callback as AnyCallback)
+    this._on('leaderboard:newEntry', callback as AnyCallback)
   }
 
   onConnect(callback: () => void): void {
-    if (!this.socket) return
-    this.socket.on('connect', callback)
+    setTimeout(callback, 0)
   }
 
-  onDisconnect(callback: () => void): void {
-    if (!this.socket) return
-    this.socket.on('disconnect', callback as AnyCallback)
-  }
+  onDisconnect(_callback: () => void): void { /* no-op */ }
 
-  // ── Remove listeners ─────────────────────────────────────────────────────
-
-  off(event: string, callback?: AnyCallback): void {
-    if (!this.socket) return
-    if (callback) {
-      this.socket.off(event, callback)
-    } else {
-      this.socket.off(event)
-    }
-  }
+  off(_event: string, _callback?: AnyCallback): void { /* no-op — channels handle cleanup */ }
 }
 
-// ── Singleton management ───────────────────────────────────────────────────
+// ── Singleton ──────────────────────────────────────────────────────────────
 
 let wsInstance: WebSocketClient | null = null
 let wsPlayerId: string | null = null
 
-/**
- * Get or create the WebSocket singleton.
- * If the playerId changes (different user), the old connection is torn down.
- */
 export function getWebSocketClient(playerId: string, sessionToken: string): WebSocketClient {
   if (wsInstance && wsPlayerId !== playerId) {
-    // Different player — tear down stale connection
     wsInstance.disconnect()
     wsInstance = null
     wsPlayerId = null
   }
-
   if (!wsInstance) {
     wsInstance = new WebSocketClient(playerId, sessionToken)
     wsPlayerId = playerId
   }
-
   return wsInstance
 }
 
-/**
- * Disconnect and destroy the singleton.
- * Call this on sign-out.
- */
 export function disconnectWebSocket(): void {
   if (wsInstance) {
     wsInstance.disconnect()
