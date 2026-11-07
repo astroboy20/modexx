@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>AR Scanner</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+    #container { width: 100vw; height: 100vh; position: relative; }
+
+    #overlay {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #0a0a0a; color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      text-align: center; padding: 24px;
+    }
+    #overlay.hidden { display: none; }
+
+    .spinner {
+      width: 48px; height: 48px; border-radius: 50%;
+      border: 4px solid rgba(255,255,255,0.15);
+      border-top-color: var(--accent, #168447);
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #status-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+    #status-sub   { font-size: 13px; opacity: 0.6; }
+
+    /* scan frame on top of camera */
+    #scan-frame {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    #scan-frame.hidden { display: none; }
+
+    .frame-box {
+      width: 260px; height: 350px;
+      position: relative;
+      border-radius: 12px;
+    }
+    .corner {
+      position: absolute; width: 28px; height: 28px;
+    }
+    .corner.tl { top: 0;  left: 0;  border-top: 4px solid var(--accent, #168447); border-left: 4px solid var(--accent, #168447); border-radius: 6px 0 0 0; }
+    .corner.tr { top: 0;  right: 0; border-top: 4px solid var(--accent, #168447); border-right: 4px solid var(--accent, #168447); border-radius: 0 6px 0 0; }
+    .corner.bl { bottom: 0; left: 0;  border-bottom: 4px solid var(--accent, #168447); border-left: 4px solid var(--accent, #168447); border-radius: 0 0 0 6px; }
+    .corner.br { bottom: 0; right: 0; border-bottom: 4px solid var(--accent, #168447); border-right: 4px solid var(--accent, #168447); border-radius: 0 0 6px 0; }
+
+    .laser {
+      position: absolute; left: 8px; right: 8px; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent, #168447), transparent);
+      animation: laser 2.4s ease-in-out infinite;
+    }
+    @keyframes laser {
+      0%   { top: 8px; opacity: 1; }
+      50%  { top: calc(100% - 10px); opacity: 0.7; }
+      100% { top: 8px; opacity: 1; }
+    }
+
+    .hint {
+      position: fixed; bottom: 80px; left: 0; right: 0;
+      text-align: center; color: #fff;
+      font-family: -apple-system, sans-serif;
+      pointer-events: none;
+    }
+    .hint-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+    .hint-sub   { font-size: 13px; opacity: 0.7; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+    .hint-badge {
+      display: inline-block; margin-top: 10px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 20px; padding: 5px 14px;
+      font-size: 12px; font-weight: 600;
+    }
+
+    /* success flash */
+    #success {
+      position: fixed; inset: 0; z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.85);
+      font-family: -apple-system, sans-serif;
+    }
+    #success.hidden { display: none; }
+    .success-box {
+      background: rgba(255,255,255,0.1);
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 20px; padding: 40px 32px;
+      text-align: center; color: #fff; max-width: 320px;
+    }
+    .check { font-size: 56px; margin-bottom: 16px; }
+    .success-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+    .success-sub   { font-size: 14px; opacity: 0.8; }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+      "mindar-image-three": "https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- MindAR camera goes here -->
+  <div id="container"></div>
+
+  <!-- Loading overlay -->
+  <div id="overlay">
+    <div class="spinner"></div>
+    <div id="status-title">Starting camera…</div>
+    <div id="status-sub">Allow camera access when prompted</div>
+  </div>
+
+  <!-- Scan frame (shown when camera is live) -->
+  <div id="scan-frame" class="hidden">
+    <div class="frame-box">
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+      <div class="laser"></div>
+    </div>
+    <div class="hint">
+      <div class="hint-title">Aim at the portrait display</div>
+      <div class="hint-sub">Point your camera at the screen showing the pulsating hotspot</div>
+      <div class="hint-badge" id="target-badge">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Success flash -->
+  <div id="success" class="hidden">
+    <div class="success-box">
+      <div class="check">✅</div>
+      <div class="success-title">Hotspot Unlocked!</div>
+      <div class="success-sub" id="success-label"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { MindARThree } from 'mindar-image-three';
+
+    // ── Read params from URL ──────────────────────────────────────────────
+    const params   = new URLSearchParams(location.search);
+    const slug     = params.get('slug')     || '';
+    const hotspotId = params.get('hotspotId') || '';
+    const label    = params.get('label')    || '';
+    const accent   = params.get('accent') === 'blue' ? '#46a9d8' : '#168447';
+    const mindSrc  = params.get('mind')    || `/${slug}.mind`;
+
+    // Apply accent colour
+    document.documentElement.style.setProperty('--accent', accent);
+    document.getElementById('target-badge').textContent = label ? `Target: ${label}` : '';
+
+    const STABLE_MS  = 800;
+    const COOLDOWN_MS = 4000;
+
+    let trackStart   = 0;
+    let lastTrigger  = 0;
+    let triggered    = false;
+    let mindarThree  = null;
+
+    function setStatus(title, sub) {
+      document.getElementById('status-title').textContent = title;
+      document.getElementById('status-sub').textContent   = sub  || '';
+    }
+
+    function postToParent(type, data) {
+      window.parent.postMessage({ type, ...data }, '*');
+    }
+
+    async function init() {
+      try {
+        setStatus('Loading AR…', 'Fetching image target');
+
+        // Fetch .mind as ArrayBuffer → Blob URL to avoid gzip corruption
+        const res = await fetch(mindSrc);
+        if (!res.ok) throw new Error(`Failed to fetch target file (${res.status})`);
+        const buf  = await res.arrayBuffer();
+        const blobUrl = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
+
+        setStatus('Starting camera…', 'Allow camera access when prompted');
+
+        mindarThree = new MindARThree({
+          container: document.getElementById('container'),
+          imageTargetSrc: blobUrl,
+          maxTrack: 1,
+          uiLoading: 'no',
+          uiScanning: 'no',
+          uiError: 'no',
+        });
+
+        const anchor = mindarThree.addAnchor(0);
+
+        anchor.onTargetFound = () => {
+          if (triggered) return;
+          console.log('[AR] target found');
+          trackStart = Date.now();
+        };
+
+        anchor.onTargetLost = () => {
+          console.log('[AR] target lost');
+          trackStart = 0;
+        };
+
+        await mindarThree.start();
+
+        // Camera is live — hide loading overlay, show scan frame
+        document.getElementById('overlay').classList.add('hidden');
+        document.getElementById('scan-frame').classList.remove('hidden');
+
+        // Poll for stable track
+        const poll = setInterval(() => {
+          if (triggered || trackStart === 0) return;
+          const elapsed = Date.now() - trackStart;
+          const coolOk  = Date.now() - lastTrigger > COOLDOWN_MS;
+          if (elapsed >= STABLE_MS && coolOk) {
+            lastTrigger = Date.now();
+            clearInterval(poll);
+            onDetected();
+          }
+        }, 100);
+
+      } catch (err) {
+        console.error('[AR] init error:', err);
+        postToParent('AR_ERROR', { message: err.message });
+      }
+    }
+
+    function onDetected() {
+      triggered = true;
+      try { mindarThree.stop(); } catch(e) {}
+
+      // Show success flash
+      document.getElementById('scan-frame').classList.add('hidden');
+      document.getElementById('success-label').textContent = label;
+      document.getElementById('success').classList.remove('hidden');
+
+      // Tell the parent React page
+      postToParent('AR_DETECTED', { hotspotId, slug });
+    }
+
+    init();
+  </script>
+</body>
+</html>
