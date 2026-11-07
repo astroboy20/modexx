@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, ArrowRight, CheckCircle2, X, ExternalLink, ChevronLeft, ChevronRight, AlertCircle, Scan, Camera } from 'lucide-react'
 import { getMonument } from '@/lib/data/index'
 import type { Monument, Hotspot, Story } from '@/lib/data/index'
@@ -103,9 +103,10 @@ function StoryPanel({ monument, hotspot, story, onClose, onPrev, onNext, hasPrev
 interface ParticipantExploreProps {
   monument: Monument
   accentColor: string
+  justUnlockedId?: string
 }
 
-function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) {
+function ParticipantExplore({ monument, accentColor, justUnlockedId }: ParticipantExploreProps) {
   const router = useRouter()
   const [currentHotspotIndex, setCurrentHotspotIndex] = useState(0)
   const [scannedHotspots, setScannedHotspots] = useState<Set<number>>(new Set())
@@ -155,7 +156,17 @@ function ParticipantExplore({ monument, accentColor }: ParticipantExploreProps) 
 
         if (savedIndices.size > 0) {
           const nextUnscanned = sortedHotspots.findIndex((_, i) => !savedIndices.has(i))
-          setCurrentHotspotIndex(nextUnscanned !== -1 ? nextUnscanned : sortedHotspots.length - 1)
+          const nextIndex = nextUnscanned !== -1 ? nextUnscanned : sortedHotspots.length - 1
+          setCurrentHotspotIndex(nextIndex)
+
+          // If we just scanned a hotspot (arrived from scanner page), show its story
+          if (justUnlockedId) {
+            const justUnlockedIndex = sortedHotspots.findIndex(h => h.id === justUnlockedId)
+            if (justUnlockedIndex !== -1 && savedIndices.has(justUnlockedIndex)) {
+              setCurrentHotspotIndex(justUnlockedIndex)
+              setShowTopic(true)
+            }
+          }
         }
       } catch (err) {
         console.error('[Explore] Failed to load progress:', err)
@@ -919,6 +930,8 @@ function OrganizerExplore({ monument }: OrganizerExploreProps) {
 
 export default function ExplorePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = React.use(params)
+  const searchParams = useSearchParams()
+  const justUnlockedId = searchParams.get('unlocked') ?? undefined
   const [monument, setMonument] = useState<Monument | null>(null)
   const [userRole, setUserRole] = useState<'participant' | 'organizer'>('participant')
   const [ready, setReady] = useState(false)
@@ -953,7 +966,7 @@ export default function ExplorePage({ params }: { params: Promise<{ slug: string
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
 
   return userRole === 'participant' ? (
-    <ParticipantExplore monument={monument} accentColor={accentColor} />
+    <ParticipantExplore monument={monument} accentColor={accentColor} justUnlockedId={justUnlockedId} />
   ) : (
     <OrganizerExplore monument={monument} />
   )

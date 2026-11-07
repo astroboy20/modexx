@@ -85,7 +85,7 @@ export class WebSocketClient {
 
     // Build channel, attach all pending listeners BEFORE subscribing
     let ch = sb.channel(channelName, {
-      config: { broadcast: { self: false } },
+      config: { broadcast: { self: true } },
     })
 
     // Register any listeners that were queued before joinMonument was called

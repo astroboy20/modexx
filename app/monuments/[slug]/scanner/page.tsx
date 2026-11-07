@@ -219,7 +219,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
             Chapter revealed. Ready to continue your journey?
           </p>
           <button
-            onClick={() => router.push(`/monuments/${slug}/explore`)}
+            onClick={() => router.push(`/monuments/${slug}/explore?unlocked=${targetHotspotIdRef.current}`)}
             style={{
               width: '100%', padding: '14px 24px',
               background: 'rgba(255,255,255,0.25)',

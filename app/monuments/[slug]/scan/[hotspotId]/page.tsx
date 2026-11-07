@@ -57,9 +57,9 @@ export default function ScanPage({ params }: { params: Promise<{ slug: string; h
         if (cancelled) return
         setStatus('success')
 
-        // Redirect back to explore after a short celebration
+        // Redirect back to explore, passing the just-unlocked hotspot so the story shows
         setTimeout(() => {
-          if (!cancelled) router.push(`/monuments/${slug}/explore`)
+          if (!cancelled) router.push(`/monuments/${slug}/explore?unlocked=${hotspotId}`)
         }, 1800)
       } catch (err) {
         if (cancelled) return
