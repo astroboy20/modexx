@@ -1,13 +1,11 @@
 "use client"
 import { AlertCircle, ArrowRight } from "lucide-react"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import Spinner from "./spinner"
 import { toast } from "sonner"
 import { validate, MAX_LEN } from "./auth-form"
 
 function SignUpTab({ redirect }: { redirect: string }) {
-  const router = useRouter()
   const [displayName, setDisplayName] = useState('')
   const [userRole, setUserRole] = useState<'participant' | 'organizer'>('participant')
   const [error, setError] = useState('')
@@ -46,8 +44,7 @@ function SignUpTab({ redirect }: { redirect: string }) {
         return
       }
       toast.success('Account created! Welcome to Modexx.')
-      router.push(redirect)
-      router.refresh()
+      window.location.href = redirect
     } catch {
       const msg = 'Network error. Please try again.'
       setError(msg)

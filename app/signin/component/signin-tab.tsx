@@ -45,8 +45,7 @@ function SignInTab({ redirect }: { redirect: string }) {
         return
       }
       toast.success('Welcome back!')
-      router.push(redirect)
-      router.refresh()
+      window.location.href = redirect
     } catch {
       const msg = 'Network error. Please try again.'
       setError(msg)
