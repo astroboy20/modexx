@@ -1,13 +1,11 @@
 "use client"
 import { AlertCircle, ArrowRight } from "lucide-react"
 import Spinner from "./spinner"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { toast } from "sonner"
 import { MAX_LEN, validate } from "./auth-form"
 
 function SignInTab({ redirect }: { redirect: string }) {
-  const router = useRouter()
   const [displayName, setDisplayName] = useState('')
   const [error, setError] = useState('')
   const [touched, setTouched] = useState(false)
