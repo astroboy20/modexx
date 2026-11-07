@@ -1,14 +1,16 @@
 import type { Question } from './data/index'
 
-// Select N distinct questions without replacement from the question bank
-// Enhanced randomization: shuffle using timestamp + random for better uniqueness
+// Select N distinct questions without replacement using Fisher-Yates shuffle.
+// Each call produces an independent, uniformly random permutation — so two users
+// starting at the same millisecond still get different question sets.
 export function selectQuestions(questions: Question[], count: number = 10): Question[] {
-  const seed = Date.now() + Math.random() * 1000
-  const shuffled = [...questions].sort(() => {
-    const rand = Math.sin(seed * Math.random()) * 10000
-    return rand - Math.floor(rand)
-  })
-  return shuffled.slice(0, Math.min(count, shuffled.length))
+  const pool = [...questions]
+  // Fisher-Yates: iterate from the end, swap each element with a random earlier index
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[pool[i], pool[j]] = [pool[j], pool[i]]
+  }
+  return pool.slice(0, Math.min(count, pool.length))
 }
 
 // Calculate score: 100 points per correct answer

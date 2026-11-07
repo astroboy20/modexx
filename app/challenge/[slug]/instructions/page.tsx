@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Lock, CheckCircle2, HelpCircle, Trophy } from 'lucide-react'
 import { getMonument } from '@/lib/data/index'
 import type { Monument } from '@/lib/data/index'
-import { getExploredHotspots } from '@/lib/storage'
+import { getExploredHotspots, getBestAttempt, type QuizAttempt } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
 import SiteHeader from '@/components/SiteHeader'
 
@@ -17,6 +17,7 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
   const [exploredCount, setExploredCount] = useState(0)
   const [ready, setReady] = useState(false)
   const [locked, setLocked] = useState(true)
+  const [bestAttempt, setBestAttempt] = useState<QuizAttempt | null>(null)
 
   useEffect(() => {
     const m = getMonument(slug)
@@ -30,9 +31,11 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
 
     const explored = getExploredHotspots(slug)
     const count = explored.length
+    const best = getBestAttempt(slug)
     setMonument(m)
     setExploredCount(count)
     setLocked(count < m.hotspots.length)
+    setBestAttempt(best)
     setReady(true)
   }, [slug, router])
 
@@ -60,13 +63,24 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
         <div className="instructions-inner">
           <h1 className="instructions-title">{monument.name}</h1>
 
+          {/* Returning player — personal best banner */}
+          {bestAttempt && (
+            <div className="instructions-returning-banner" style={{ borderColor: accentColor, background: accentSoft }}>
+              <Trophy size={18} style={{ color: accentColor, flexShrink: 0 }} />
+              <div>
+                <p className="status-label">Your best score: <strong style={{ color: accentColor }}>{bestAttempt.score} / 1,000 pts</strong></p>
+                <p className="status-desc">{bestAttempt.correctCount}/10 correct — retake to improve your rank</p>
+              </div>
+            </div>
+          )}
+
           <div className="instructions-status" style={{ borderColor: locked ? 'var(--line)' : accentColor, background: locked ? 'var(--soft)' : accentSoft }}>
             <div className="status-row">
               {locked
                 ? <Lock size={20} style={{ color: 'var(--muted)', flexShrink: 0 }} />
                 : <CheckCircle2 size={20} style={{ color: accentColor, flexShrink: 0 }} />}
               <div>
-                <p className="status-label">{locked ? 'Challenge locked' : 'Ready to begin'}</p>
+                <p className="status-label">{locked ? 'Challenge locked' : bestAttempt ? 'Ready to retake' : 'Ready to begin'}</p>
                 {locked && <p className="status-desc">{exploredCount} of {total} chapters explored</p>}
               </div>
             </div>
@@ -82,7 +96,7 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
               {[
                 { icon: <HelpCircle size={22} style={{ color: accentColor }} />, title: '10 questions' },
                 { icon: <Trophy size={22} style={{ color: accentColor }} />, title: '100 pts each' },
-                { icon: <CheckCircle2 size={22} style={{ color: accentColor }} />, title: 'One submission' },
+                { icon: <CheckCircle2 size={22} style={{ color: accentColor }} />, title: 'Best score counts' },
                 { icon: <Trophy size={22} style={{ color: accentColor }} />, title: 'Leaderboard ranked' },
               ].map((rule) => (
                 <div className="rule-card" key={rule.title}>
@@ -100,7 +114,7 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
               </Link>
             ) : (
               <Link href={`/challenge/${monument.slug}/quiz`} className="button button-primary">
-                Start the challenge <ArrowRight size={16} />
+                {bestAttempt ? <>Retake the challenge <ArrowRight size={16} /></> : <>Start the challenge <ArrowRight size={16} /></>}
               </Link>
             )}
             <Link href={`/leaderboard/${monument.slug}`} className="text-link">

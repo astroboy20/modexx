@@ -7,7 +7,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, XCircle, Trophy, Share2, RotateCcw
 import { toast } from 'sonner'
 import { getMonument } from '@/lib/data/index'
 import type { Monument, Question } from '@/lib/data/index'
-import { getActiveAttempt, clearActiveAttempt, type QuizAttempt } from '@/lib/storage'
+import { getActiveAttempt, clearActiveAttempt, getBestAttempt, getAttemptHistory, type QuizAttempt } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
 import { calculateScore } from '@/lib/quiz'
 import ScorecardPreview, { renderScorecard, ELECTION_CONFIG, daysUntil } from '@/components/ScorecardPreview'
@@ -26,6 +26,9 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
   const [showScorecard, setShowScorecard] = useState(false)
   const [copied, setCopied] = useState(false)
   const [sharing, setSharing] = useState(false)
+  const [previousBest, setPreviousBest] = useState<QuizAttempt | null>(null)
+  const [isNewBest, setIsNewBest] = useState(false)
+  const [attemptCount, setAttemptCount] = useState(0)
 
   useEffect(() => {
     const player = getClientSession()
@@ -64,6 +67,21 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
     const qMap = Object.fromEntries(m.questions.map((q) => [q.id, q]))
     const qs = a.assignedQuestionIds.map((id) => qMap[id]).filter(Boolean)
     const { results: r } = calculateScore(qs, a.answers)
+
+    // Persona D: compute personal best from history (excluding current attempt)
+    const history = getAttemptHistory(slug).filter(
+      (h) => h.status === 'completed' && h.id !== a.id
+    )
+    const best = history.length > 0
+      ? history.reduce((b, h) => {
+          if (h.score > b.score) return h
+          if (h.score === b.score && h.correctCount > b.correctCount) return h
+          return b
+        })
+      : null
+    setPreviousBest(best)
+    setIsNewBest(!best || a.score > best.score || (a.score === best.score && a.correctCount > best.correctCount))
+    setAttemptCount(history.length + 1) // total including this one
 
     setMonument(m)
     setAttempt(a)
@@ -173,6 +191,24 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
               <span>{mins}m {secs}s</span>
               {rank && <><span>·</span><span>Rank #{rank}</span></>}
             </div>
+
+            {/* Persona D: personal best comparison */}
+            {attemptCount > 1 && (
+              <div className="results-personal-best" style={{ marginTop: 12, padding: '8px 14px', borderRadius: 8, background: isNewBest ? accentColor + '18' : 'var(--soft)', border: `1px solid ${isNewBest ? accentColor : 'var(--line)'}`, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                {isNewBest ? (
+                  <>
+                    <Trophy size={15} style={{ color: accentColor, flexShrink: 0 }} />
+                    <span style={{ color: accentColor, fontWeight: 600 }}>New personal best!</span>
+                    {previousBest && <span style={{ color: 'var(--muted)' }}>Previous: {previousBest.score} pts</span>}
+                  </>
+                ) : (
+                  <>
+                    <Trophy size={15} style={{ color: 'var(--muted)', flexShrink: 0 }} />
+                    <span style={{ color: 'var(--muted)' }}>Attempt {attemptCount} · Best: {previousBest?.score ?? attempt.score} pts</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="results-actions">
@@ -226,6 +262,17 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
             <Link href={`/leaderboard/${monument.slug}`} className="button button-dark"><Trophy size={16} /> View leaderboard <ArrowRight size={16} /></Link>
             <button className="button" style={{ background: 'var(--soft)' }} onClick={handleReplay}><RotateCcw size={16} /> Try again</button>
             <Link href="/monuments" className="text-link">Explore more monuments <ArrowRight size={15} /></Link>
+            {/* Suggest the other challenge for Persona D */}
+            {monument.slug === 'tinubu' && (
+              <Link href="/challenge/sanwo-olu/instructions" className="text-link" style={{ marginTop: 2 }}>
+                Try the Sanwo-Olu challenge <ArrowRight size={15} />
+              </Link>
+            )}
+            {monument.slug === 'sanwo-olu' && (
+              <Link href="/challenge/tinubu/instructions" className="text-link" style={{ marginTop: 2 }}>
+                Try the Tinubu challenge <ArrowRight size={15} />
+              </Link>
+            )}
           </div>
         </div>
       </div>

@@ -11,6 +11,7 @@ import {
   getActiveAttempt,
   saveAttempt,
   addToHistory,
+  clearActiveAttempt,
   generateId,
   type QuizAttempt,
 } from '@/lib/storage'
@@ -48,14 +49,16 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
     if (!m) { router.replace('/monuments'); return }
 
     const existing = getActiveAttempt(slug)
+    // If a completed attempt exists in storage (returning player who didn't use the replay button),
+    // save it to history and clear it so a fresh attempt can begin.
     if (existing?.status === 'completed') {
-      router.replace(`/challenge/${slug}/results`)
-      return
+      addToHistory(existing)
+      clearActiveAttempt(slug)
     }
 
     setUserRole(player.userRole)
 
-    let currentAttempt = existing
+    let currentAttempt = existing?.status === 'in_progress' ? existing : null
     let qs: Question[]
 
     if (currentAttempt && currentAttempt.status === 'in_progress') {
