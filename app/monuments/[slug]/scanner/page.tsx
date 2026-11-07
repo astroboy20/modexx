@@ -34,6 +34,8 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
   const [detectedLabel,setDetectedLabel] = useState('')
 
   const targetHotspotIdRef = useRef<string | null>(null)
+  const targetLabelRef     = useRef<string>('')
+  const monumentRef        = useRef<Monument | null>(null)
   const isMountedRef       = useRef(true)
   const isSavingRef        = useRef(false)
 
@@ -47,6 +49,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
   useEffect(() => {
     const m = getMonument(slug)
     if (!m) { router.replace('/monuments'); return }
+    monumentRef.current = m
     setMonument(m)
   }, [slug, router])
 
@@ -72,6 +75,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
         if (!next) { setPhase('no-target'); return }
 
         targetHotspotIdRef.current = next.id
+        targetLabelRef.current = next.label
         setTargetHotspotId(next.id)
         setTargetLabel(next.label)
         setPhase('scanning')
@@ -117,7 +121,10 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
     isSavingRef.current = true
 
     const hotspotId = targetHotspotIdRef.current
-    if (!hotspotId || !monument) { isSavingRef.current = false; return }
+    const label     = targetLabelRef.current
+    const mon       = monumentRef.current
+
+    if (!hotspotId || !mon) { isSavingRef.current = false; return }
 
     const player = getClientSession()
     if (!player) {
@@ -125,7 +132,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
       return
     }
 
-    setDetectedLabel(targetLabel)
+    setDetectedLabel(label)
     setPhase('saving')
 
     try {
@@ -158,8 +165,9 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
       setPhase('error')
       isSavingRef.current = false
     }
+  // refs only — no stale closure
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monument, slug, targetLabel])
+  }, [slug, router])
 
   // ── Render ─────────────────────────────────────────────────────────────
 
