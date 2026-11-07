@@ -149,6 +149,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
   const lastTriggerRef = useRef<number>(0)
   const isSavingRef = useRef(false)
   const isMountedRef = useRef(true)
+  const mindBlobUrlRef = useRef<string | null>(null)
 
   // ── Cleanup on unmount ─────────────────────────────────────────────────────
 
@@ -165,6 +166,10 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
     try { mindARRef.current?.stop() } catch { /* ignore */ }
     mindARRef.current = null
     trackingStartRef.current = 0
+    if (mindBlobUrlRef.current) {
+      URL.revokeObjectURL(mindBlobUrlRef.current)
+      mindBlobUrlRef.current = null
+    }
   }, [])
 
   // ── Step 1: load monument ──────────────────────────────────────────────────
@@ -233,8 +238,21 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
 
         const MindARThree = window.__mindARThreeClass__
 
-        // Use pre-compiled .mind file from /public — no runtime compilation needed
-        const mindFileSrc = monument!.slug === 'tinubu' ? '/tinubu.mind' : '/sanwo-olu.mind'
+        // Fetch the .mind file as ArrayBuffer and create a Blob URL.
+        // This bypasses any server-side gzip compression that corrupts the
+        // binary .mind format when served directly as a URL to MindAR.
+        const mindFilePath = monument!.slug === 'tinubu' ? '/tinubu.mind' : '/sanwo-olu.mind'
+        const mindRes = await fetch(mindFilePath)
+        if (!mindRes.ok) throw new Error(`Failed to fetch .mind file: ${mindRes.status}`)
+        const mindBuffer = await mindRes.arrayBuffer()
+        const mindBlob = new Blob([mindBuffer], { type: 'application/octet-stream' })
+        const mindFileSrc = URL.createObjectURL(mindBlob)
+        mindBlobUrlRef.current = mindFileSrc
+        if (cancelled || !isMountedRef.current) {
+          URL.revokeObjectURL(mindFileSrc)
+          mindBlobUrlRef.current = null
+          return
+        }
 
         // Create MindAR instance
         const mindAR = new MindARThree({
