@@ -337,7 +337,8 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
       <iframe
         key={iframeSrc}
         src={iframeSrc}
-        allow="camera"
+        allow="camera; microphone; accelerometer; gyroscope"
+        allowFullScreen
         style={{
           position: 'absolute', inset: 0,
           width: '100%', height: '100%',
