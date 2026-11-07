@@ -39,10 +39,19 @@ export default async function MonumentPage({ params }: { params: Promise<{ slug:
             </Link>
           </div>
         </div>
-        <div className="detail-art" aria-label={`${m.subject} monument artwork`} role="img">
+        <div className="detail-art" aria-label={`${m.subject} portrait`} role="img" style={{ overflow: 'hidden', background: m.accent === 'green' ? '#eaf2ee' : '#e7f2f8' }}>
           <span className="detail-art-number">{slug === 'tinubu' ? '01' : '02'}</span>
-          <div className="detail-art-figure" />
-          <span className="detail-art-caption">A digital monumental experience by Modexx</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={slug === 'tinubu' ? '/President-Bola-Ahmed-Tinubu.jpg' : '/sanwo-olu.png'}
+            alt={m.subject}
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              objectFit: 'cover', objectPosition: 'top center',
+              display: 'block',
+            }}
+          />
         </div>
       </section>
 

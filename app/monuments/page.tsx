@@ -19,10 +19,20 @@ export default function MonumentsPage() {
         {allMonuments.map((monument, idx) => (
           <div key={monument.id} className={`monument-card ${monument.accent}`}>
             <Link href={`/monuments/${monument.slug}`}>
-              <div className="card-visual">
+              <div className="card-visual" style={{ background: monument.accent === 'green' ? '#eaf2ee' : '#e7f2f8', overflow: 'hidden' }}>
                 <span className="card-number">{String(idx + 1).padStart(2, '0')}</span>
-                <div className="card-figure" />
                 <ArrowUpRight className="card-arrow" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={monument.slug === 'tinubu' ? '/President-Bola-Ahmed-Tinubu.jpg' : '/sanwo-olu.png'}
+                  alt={monument.subject}
+                  style={{
+                    position: 'absolute', inset: 0,
+                    width: '100%', height: '100%',
+                    objectFit: 'cover', objectPosition: 'top center',
+                    display: 'block',
+                  }}
+                />
               </div>
               <div className="card-meta">
                 <span>{monument.scope}</span>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { X, Download, Share2, Copy, CheckCircle2 } from 'lucide-react'
+import { X, Download, Share2, CheckCircle2 } from 'lucide-react'
 import type { Monument } from '@/lib/data/index'
 
 interface ScorecardPreviewProps {
@@ -14,25 +14,39 @@ interface ScorecardPreviewProps {
   onClose: () => void
 }
 
-// Election date for 2027 Lagos gubernatorial election (assuming similar timing to 2023 - March 18)
-const ELECTION_DATE = new Date('2027-03-18T00:00:00')
+// Lagos governorship election: 6 February 2027 (INEC official date)
+const LAGOS_ELECTION = new Date('2027-02-06T08:00:00')
+// Presidential election: 16 January 2027
+const PRESIDENTIAL_ELECTION = new Date('2027-01-16T08:00:00')
 
-function getCountdown() {
-  const now = new Date()
-  const diff = ELECTION_DATE.getTime() - now.getTime()
-  
+function getCountdown(date: Date): string {
+  const diff = date.getTime() - Date.now()
   if (diff <= 0) return 'Election Day!'
-  
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-  
+  const days = Math.floor(diff / 86400000)
   if (days > 365) {
-    const years = Math.floor(days / 365)
-    const remainingDays = days % 365
-    return `${years}y ${remainingDays}d`
+    const y = Math.floor(days / 365)
+    const d = days % 365
+    return `${y}yr ${d}d`
   }
-  
-  return `${days}d ${hours}h`
+  return `${days} days`
+}
+
+// Per-monument config: who to show + what to say
+const ELECTION_CONFIG = {
+  tinubu: {
+    portrait: '/President-Bola-Ahmed-Tinubu.jpg',
+    name: 'President Bola Tinubu',
+    cta: 'Vote Tinubu 2027',
+    electionDate: PRESIDENTIAL_ELECTION,
+    electionLabel: 'Presidential Election',
+  },
+  'sanwo-olu': {
+    portrait: '/Obafemi-Hamzat.jpg',
+    name: 'Dr. Obafemi Hamzat',
+    cta: 'Vote Hamzat 2027',
+    electionDate: LAGOS_ELECTION,
+    electionLabel: 'Lagos Governorship Election',
+  },
 }
 
 export default function ScorecardPreview({
@@ -47,30 +61,22 @@ export default function ScorecardPreview({
   const cardRef = useRef<HTMLDivElement>(null)
   const [downloading, setDownloading] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [countdown, setCountdown] = useState(getCountdown())
+  const [, setTick] = useState(0)
+
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
   const mins = Math.floor(completionSeconds / 60)
   const secs = completionSeconds % 60
   const completedDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 
-  // Update countdown every hour
+  const electionCfg = ELECTION_CONFIG[monument.slug as keyof typeof ELECTION_CONFIG] ?? ELECTION_CONFIG.tinubu
+
+  // Re-render every minute so countdown stays current
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCountdown(getCountdown())
-    }, 60000) // Update every minute
-    return () => clearInterval(interval)
+    const id = setInterval(() => setTick(t => t + 1), 60000)
+    return () => clearInterval(id)
   }, [])
 
-  // Get deputy governor image and name based on monument
-  const deputyGovernorInfo = monument.slug === 'sanwo-olu' ? {
-    name: 'Obafemi Hamzat',
-    image: '/hamzat.jpg', // You'll need to add this image
-    message: 'Vote for Hamzat'
-  } : {
-    name: 'President Tinubu & Obafemi Hamzat',
-    image: '/hamzat.jpg', // You'll need to add this image
-    message: 'Vote for Hamzat'
-  }
+  const countdown = getCountdown(electionCfg.electionDate)
 
   async function handleDownload() {
     if (!cardRef.current) return
@@ -78,10 +84,10 @@ export default function ScorecardPreview({
     try {
       const { toPng } = await import('html-to-image')
       const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, cacheBust: true })
-      const link = document.createElement('a')
-      link.download = `modexx-${monument.slug}-scorecard.png`
-      link.href = dataUrl
-      link.click()
+      const a = document.createElement('a')
+      a.download = `modexx-${monument.slug}-scorecard.png`
+      a.href = dataUrl
+      a.click()
     } catch (e) {
       console.error('Scorecard download failed', e)
     } finally {
@@ -90,7 +96,13 @@ export default function ScorecardPreview({
   }
 
   async function handleShare() {
-    const text = `I completed ${monument.name} on Modexx.\n10 hotspots explored. ${correctCount}/10 correct. ${score}/1,000 points.${rank ? ` Ranked #${rank}.` : ''}\n\n${deputyGovernorInfo.message} for 2027 Lagos election!\nCountdown: ${countdown}\n\nCan you beat my score?\nmodexx.co/monuments/${monument.slug}`
+    const text = [
+      `I completed ${monument.name} on Modexx.`,
+      `${correctCount}/10 correct · ${score}/1,000 pts${rank ? ` · #${rank}` : ''}`,
+      `${electionCfg.cta} — ${countdown} to go.`,
+      `modexx.app/monuments/${monument.slug}`,
+    ].join('\n')
+
     if (navigator.share) {
       try { await navigator.share({ title: `My ${monument.name} result`, text }) } catch {}
     } else {
@@ -100,12 +112,8 @@ export default function ScorecardPreview({
     }
   }
 
-  function handleOverlayClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (e.target === e.currentTarget) onClose()
-  }
-
   return (
-    <div className="scorecard-overlay" onClick={handleOverlayClick} role="dialog" aria-modal="true" aria-label="Scorecard preview">
+    <div className="scorecard-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose() }} role="dialog" aria-modal="true" aria-label="Scorecard preview">
       <div className="scorecard-modal">
         <div className="scorecard-modal-header">
           <h2>Your scorecard</h2>
@@ -124,28 +132,14 @@ export default function ScorecardPreview({
               <div className="sc-apc-badge">APC</div>
             </div>
 
-            {/* Monument identity — uses actual portrait photo */}
+            {/* Monument identity — actual portrait photo */}
             <div className="sc-monument-section">
-              <div className="sc-monument-art" style={{ 
-                background: monument.accent === 'green' ? '#eaf2ee' : '#e7f2f8',
-                overflow: 'hidden',
-                borderRadius: '8px',
-              }}>
+              <div className="sc-monument-art" style={{ background: monument.accent === 'green' ? '#eaf2ee' : '#e7f2f8', overflow: 'hidden', borderRadius: '8px' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={monument.slug === 'tinubu' ? '/tinubu.png' : '/sanwo-olu.png'}
                   alt={monument.subject}
                   style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none'
-                    const parent = (e.target as HTMLImageElement).parentElement
-                    if (parent) {
-                      const fallback = document.createElement('div')
-                      fallback.className = 'sc-figure'
-                      fallback.style.background = accentColor
-                      parent.appendChild(fallback)
-                    }
-                  }}
                 />
               </div>
               <div className="sc-monument-info">
@@ -158,7 +152,7 @@ export default function ScorecardPreview({
             {/* Divider */}
             <div className="sc-divider" style={{ background: accentColor }} />
 
-            {/* Score hero */}
+            {/* Score */}
             <div className="sc-score-section">
               <p className="sc-player-name">@{displayName}</p>
               <div className="sc-score-display">
@@ -168,7 +162,7 @@ export default function ScorecardPreview({
               <p className="sc-score-label">points scored</p>
             </div>
 
-            {/* Stats row */}
+            {/* Stats */}
             <div className="sc-stats-row">
               <div className="sc-stat">
                 <span className="sc-stat-value" style={{ color: accentColor }}>{correctCount}/10</span>
@@ -189,41 +183,57 @@ export default function ScorecardPreview({
                   <div className="sc-stat-divider" />
                   <div className="sc-stat">
                     <span className="sc-stat-value" style={{ color: accentColor }}>#{rank}</span>
-                    <span className="sc-stat-label">Rank*</span>
+                    <span className="sc-stat-label">Rank</span>
                   </div>
                 </>
               )}
             </div>
 
-            {/* Election countdown */}
-            <div style={{ 
-              margin: '16px 0 0', 
-              padding: '14px 16px', 
-              background: `${accentColor}12`, 
-              borderRadius: '10px',
+            {/* Election call-to-action — portrait of candidate */}
+            <div style={{
+              margin: '14px 20px 0',
+              padding: '14px',
+              background: `${accentColor}10`,
               border: `1.5px solid ${accentColor}30`,
-              textAlign: 'center',
+              borderRadius: '10px',
+              display: 'flex',
+              gap: '14px',
+              alignItems: 'center',
             }}>
-              <p style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', color: accentColor, marginBottom: '6px' }}>
-                🗳 Your Vote Counts
-              </p>
-              <p style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--ink, #111)' }}>
-                Get your Permanent Voter Card (PVC)
-              </p>
-              <div style={{ 
-                display: 'inline-block',
-                padding: '5px 14px',
-                background: accentColor,
-                color: '#fff',
-                borderRadius: '20px',
-                fontSize: '12px',
-                fontWeight: 700,
+              {/* Candidate photo */}
+              <div style={{
+                width: '56px', height: '56px', borderRadius: '50%',
+                overflow: 'hidden', flexShrink: 0,
+                border: `2px solid ${accentColor}`,
+                background: '#f0f0f0',
               }}>
-                ⏱ {countdown} to 2027 election
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={electionCfg.portrait}
+                  alt={electionCfg.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: '14px', fontWeight: 700, color: accentColor, margin: '0 0 2px' }}>
+                  {electionCfg.cta}
+                </p>
+                <p style={{ fontSize: '11px', color: '#555', margin: '0 0 6px' }}>
+                  {electionCfg.electionLabel}
+                </p>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px',
+                  background: accentColor, color: '#fff',
+                  padding: '3px 10px', borderRadius: '20px',
+                  fontSize: '11px', fontWeight: 700,
+                }}>
+                  ⏱ {countdown}
+                </div>
               </div>
             </div>
 
-            {/* Challenge prompt */}
+            {/* CTA */}
             <div className="sc-cta-section">
               <p className="sc-cta-text">Can you beat my score?</p>
               <p className="sc-url">modexx.app/monuments/{monument.slug}</p>
@@ -243,11 +253,9 @@ export default function ScorecardPreview({
             <Download size={16} /> {downloading ? 'Generating…' : 'Download PNG'}
           </button>
           <button className="button" style={{ background: 'var(--soft)' }} onClick={handleShare}>
-            {copied ? <><CheckCircle2 size={16} /> Copied!</> : <><Share2 size={16} /> Share result</>}
+            {copied ? <><CheckCircle2 size={16} /> Copied!</> : <><Share2 size={16} /> Share</>}
           </button>
         </div>
-
-        {rank && <p style={{ fontSize: 11, color: 'var(--muted)', textAlign: 'center', marginTop: 8 }}>* Local demo rank — not a verified global ranking.</p>}
       </div>
     </div>
   )
