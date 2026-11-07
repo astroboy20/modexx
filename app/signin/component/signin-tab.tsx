@@ -79,9 +79,7 @@ function SignInTab({ redirect }: { redirect: string }) {
           <p id="si-name-error" className="form-error" role="alert">
             <AlertCircle size={12} aria-hidden /> {shownError}
           </p>
-        ) : (
-          <p id="si-name-hint" className="form-hint">Enter the exact name you used when you signed up</p>
-        )}
+        ) : null}
       </div>
 
       <button type="submit" className="button button-primary signup-submit" disabled={loading}>

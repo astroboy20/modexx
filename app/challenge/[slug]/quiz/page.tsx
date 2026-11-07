@@ -38,6 +38,12 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
     const player = getClientSession()
     if (!player) { router.replace(`/signin?redirect=/challenge/${slug}/quiz`); return }
 
+    // Organizers manage the experience — they don't take the quiz
+    if (player.userRole === 'organizer') {
+      router.replace(`/monuments/${slug}/explore`)
+      return
+    }
+
     const m = getMonument(slug)
     if (!m) { router.replace('/monuments'); return }
 

@@ -88,9 +88,7 @@ function SignUpTab({ redirect }: { redirect: string }) {
           <p id="su-name-error" className="form-error" role="alert">
             <AlertCircle size={12} aria-hidden /> {shownError}
           </p>
-        ) : (
-          <p id="su-name-hint" className="form-hint">Letters, numbers, spaces, _ - . allowed · Max {MAX_LEN} characters</p>
-        )}
+        ) : null}
       </div>
 
       <div className="form-field">

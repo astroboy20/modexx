@@ -12,9 +12,7 @@ export default function MonumentsPage() {
       />
 
       <section className="directory-hero">
-        <p className="eyebrow"><span className="eyebrow-line" /> The collection</p>
         <h1>Explore the<br /><em>monuments.</em></h1>
-        <p>Discover the stories, milestones, decisions, and historical context behind the people featured in the Modexx collection.</p>
       </section>
 
       <section className="monument-grid">

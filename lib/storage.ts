@@ -58,8 +58,18 @@ export function generateId(): string {
 }
 
 // ── Exploration Progress ───────────────────────────────────────────────────
+// Keys are scoped to playerId so different users on the same device
+// don't share exploration state.
 
-const EXPLORATION_KEY = (slug: string) => `modexx_explore_${slug}`
+import { getClientSession } from './session-client'
+
+function currentPlayerId(): string {
+  if (typeof window === 'undefined') return 'anon'
+  const session = getClientSession()
+  return session?.id ?? 'anon'
+}
+
+const EXPLORATION_KEY = (slug: string) => `modexx_explore_${currentPlayerId()}_${slug}`
 
 export function getExploredHotspots(slug: string): string[] {
   return safeGet<string[]>(EXPLORATION_KEY(slug), [])

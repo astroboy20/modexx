@@ -74,17 +74,11 @@ function AuthForm() {
           {tab === 'signup' ? (
             <>
               <h1 className="signup-title">Choose your<br /><em>display name.</em></h1>
-              <p className="signup-lede">
-                This name appears on the leaderboard and your scorecard. Pick something you&apos;re happy to be known by.
-              </p>
               <SignUpTab redirect={redirect} />
             </>
           ) : (
             <>
               <h1 className="signup-title">Welcome<br /><em>back.</em></h1>
-              <p className="signup-lede">
-                Enter the display name you signed up with to restore your profile and scores.
-              </p>
               <SignInTab redirect={redirect} />
             </>
           )}

@@ -244,20 +244,14 @@ export default function LandingClient({ user }: Props) {
 
       {/*  Statement  */}
       <section className="statement" aria-labelledby="statement-title">
-        <p className="eyebrow">The Modexx point of view</p>
         <h2 id="statement-title">
           A digital monument is a story you can <span>step inside.</span>
         </h2>
-        <p>
-          We create structured, interactive experiences that make meaningful
-          stories easier to enter, understand, and remember.
-        </p>
       </section>
 
       {/*  Process  */}
       <section className="process section-shell" id="how-it-works">
         <div className="section-intro">
-          <p className="eyebrow">The experience</p>
           <h2>
             From first impression
             <br />
@@ -279,17 +273,11 @@ export default function LandingClient({ user }: Props) {
       {/*  Preview  */}
       <section className="preview section-shell">
         <div className="preview-copy">
-          <p className="eyebrow">Try the format</p>
           <h2>
             Every detail opens
             <br />
             another door.
           </h2>
-          <p>
-            Tap a marker on this small preview to see how a story can unfold.
-            The real monuments hold ten chapters, each connected to a bigger
-            picture.
-          </p>
           <Link className="text-link" href={monumentsHref}>
             Enter the collection <ArrowRight size={17} />
           </Link>
@@ -327,7 +315,6 @@ export default function LandingClient({ user }: Props) {
       {/*  Audience  */}
       <section className="audience section-shell" id="for">
         <div className="audience-heading">
-          <p className="eyebrow">Made for meaningful stories</p>
           <h2>
             One platform.
             <br />

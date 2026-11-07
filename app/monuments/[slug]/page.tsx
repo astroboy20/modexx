@@ -30,14 +30,12 @@ export default async function MonumentPage({ params }: { params: Promise<{ slug:
           <p className="eyebrow"><span className="eyebrow-line" /> {m.scope}</p>
           <h1>{m.name}</h1>
           <p className="detail-subject">{m.subject}</p>
-          <p className="detail-subject" style={{ fontFamily: 'inherit', fontSize: 15, color: 'var(--muted)', marginBottom: 12 }}>{m.office}</p>
-          <p className="detail-intro">{m.intro}</p>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
             <Link href={`/monuments/${slug}/explore`} className="button button-dark">
-              Explore this monument <ArrowRight size={17} />
+              Explore <ArrowRight size={17} />
             </Link>
             <Link href={`/leaderboard/${slug}`} className="text-link">
-              View leaderboard <ArrowRight size={15} />
+              Leaderboard <ArrowRight size={15} />
             </Link>
           </div>
         </div>
@@ -50,12 +48,7 @@ export default async function MonumentPage({ params }: { params: Promise<{ slug:
 
       <section className="chapter-preview">
         <div>
-          <p className="eyebrow"><span className="eyebrow-line" /> Inside the monument</p>
           <h2>Stories, not<br /><em>statues.</em></h2>
-          <p style={{ color: 'var(--muted)', fontSize: 15, lineHeight: 1.6, marginTop: 16 }}>
-            10 interactive chapters. Each one opens a story connected to {m.subject}&apos;s record.
-            Explore all 10 to unlock the knowledge challenge.
-          </p>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 28 }}>
             <Link href={`/monuments/${slug}/explore`} className="button button-dark">
               Begin exploring <ArrowRight size={16} />
@@ -73,7 +66,7 @@ export default async function MonumentPage({ params }: { params: Promise<{ slug:
               <LockKeyhole size={16} aria-label="Locked until explored" />
             </div>
           ))}
-          <p className="chapter-note"><Play size={14} /> Begin exploring to unlock each chapter&apos;s story.</p>
+          <p className="chapter-note"><Play size={14} /> Explore all {m.hotspots.length} to unlock the knowledge challenge.</p>
         </div>
       </section>
     </main>
