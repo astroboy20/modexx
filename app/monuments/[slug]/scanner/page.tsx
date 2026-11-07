@@ -232,6 +232,11 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
 
     async function initAR() {
       try {
+        // Wait one animation frame so the container div is fully painted
+        // and has real dimensions before MindAR measures it
+        await new Promise(resolve => requestAnimationFrame(resolve))
+        if (cancelled || !isMountedRef.current) return
+
         // Load MindARThree class via importmap + ES module script in <head>
         await loadMindARClass()
         if (cancelled || !isMountedRef.current) return
@@ -522,7 +527,7 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
   const isScanning = phase === 'scanning'
 
   return (
-    <div style={{ minHeight: '100vh', background: '#000', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ minHeight: '100vh', height: '100vh', background: '#000', position: 'relative', overflow: 'hidden' }}>
 
       {/* Back / close header — always visible */}
       <div style={{
@@ -559,13 +564,14 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
         )}
       </div>
 
-      {/* MindAR injects its camera video + canvas here */}
+      {/* MindAR injects its camera video + canvas here — always rendered so
+          MindAR can measure the container during start(). The loading overlay
+          sits on top (z-index 25) until scanning begins. */}
       <div
         ref={containerRef}
         style={{
           position: 'absolute', inset: 0,
-          // Only show when actually scanning; otherwise the loading UI sits on top
-          visibility: isScanning ? 'visible' : 'hidden',
+          zIndex: 1,
         }}
       />
 
