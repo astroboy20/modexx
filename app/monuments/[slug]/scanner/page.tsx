@@ -149,11 +149,6 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
       if (!isMountedRef.current) return
       setPhase('success')
 
-      setTimeout(() => {
-        if (!isMountedRef.current) return
-        router.push(`/monuments/${slug}/explore`)
-      }, 2200)
-
     } catch (err) {
       console.error('[Scanner] save error:', err)
       if (!isMountedRef.current) return
@@ -208,10 +203,25 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
             <CheckCircle2 size={48} />
           </div>
           <h1 style={{ fontSize: '28px', fontWeight: 600, marginBottom: '12px' }}>Hotspot Unlocked!</h1>
-          <p style={{ fontSize: '16px', opacity: 0.9, lineHeight: 1.6 }}>
+          <p style={{ fontSize: '16px', opacity: 0.9, lineHeight: 1.6, marginBottom: '8px' }}>
             <strong>{detectedLabel}</strong>
           </p>
-          <p style={{ fontSize: '14px', opacity: 0.7, marginTop: '8px' }}>Returning to exploration…</p>
+          <p style={{ fontSize: '14px', opacity: 0.7, marginBottom: '32px' }}>
+            Chapter revealed. Ready to continue your journey?
+          </p>
+          <button
+            onClick={() => router.push(`/monuments/${slug}/explore`)}
+            style={{
+              width: '100%', padding: '14px 24px',
+              background: 'rgba(255,255,255,0.25)',
+              border: '2px solid rgba(255,255,255,0.4)',
+              borderRadius: '12px', color: '#fff',
+              fontSize: '16px', fontWeight: 600, cursor: 'pointer',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            Continue Exploring →
+          </button>
         </div>
       </div>
     )
