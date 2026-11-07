@@ -110,7 +110,7 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
         `🗳 ${electionCfg.cta} — ${countdown}`,
         ``,
         `Can you beat my score?`,
-        `modexx.app/monuments/${monument.slug}`,
+        `${window.location.origin}/monuments/${monument.slug}`,
       ].join('\n')
 
       const file = new File([blob], 'modexx-scorecard.png', { type: 'image/png' })

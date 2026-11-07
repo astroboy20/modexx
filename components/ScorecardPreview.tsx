@@ -65,8 +65,10 @@ async function renderScorecard(opts: {
   accentColor: string
   electionCfg: typeof ELECTION_CONFIG[keyof typeof ELECTION_CONFIG]
   countdown: string
+  appUrl?: string
 }): Promise<Blob> {
   const { monument, displayName, score, correctCount, completionSeconds, rank, accentColor, electionCfg, countdown } = opts
+  const appUrl = (opts.appUrl ?? (typeof window !== 'undefined' ? window.location.origin : 'https://modexx-one.vercel.app')).replace(/\/$/, '')
   const mins = Math.floor(completionSeconds / 60)
   const secs = completionSeconds % 60
   const completedDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -256,7 +258,7 @@ async function renderScorecard(opts: {
   ctx.fillText('Can you beat my score?', W / 2, CTA_Y + 18)
   ctx.fillStyle = '#aaaaaa'
   ctx.font = '11px Arial'
-  ctx.fillText(`modexx.app/monuments/${monument.slug}`, W / 2, CTA_Y + 36)
+  ctx.fillText(`${appUrl}/monuments/${monument.slug}`, W / 2, CTA_Y + 36)
 
   // ── Bottom bar ────────────────────────────────────────────────────────
   ctx.fillStyle = '#f7f9f7'
@@ -349,7 +351,7 @@ export default function ScorecardPreview({
         `🗳 ${electionCfg.cta} — ${countdown}`,
         ``,
         `Can you beat my score?`,
-        `modexx.app/monuments/${monument.slug}`,
+        `${window.location.origin}/monuments/${monument.slug}`,
       ].join('\n')
 
       // Try native share with image attached (works on mobile)
@@ -460,7 +462,7 @@ export default function ScorecardPreview({
 
             <div className="sc-cta-section">
               <p className="sc-cta-text">Can you beat my score?</p>
-              <p className="sc-url">modexx.app/monuments/{monument.slug}</p>
+              <p className="sc-url">{typeof window !== 'undefined' ? window.location.origin : ''}/monuments/{monument.slug}</p>
             </div>
 
             <div className="sc-bottom-bar">
