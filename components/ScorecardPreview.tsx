@@ -286,6 +286,9 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath()
 }
 
+// ── Public exports for use outside the modal ─────────────────────────────
+export { renderScorecard, ELECTION_CONFIG, daysUntil }
+
 // ── Component ───────────────────────────────────────────────────────────────
 
 export default function ScorecardPreview({

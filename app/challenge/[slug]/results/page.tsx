@@ -10,7 +10,7 @@ import type { Monument, Question } from '@/lib/data/index'
 import { getActiveAttempt, clearActiveAttempt, type QuizAttempt } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
 import { calculateScore } from '@/lib/quiz'
-import ScorecardPreview from '@/components/ScorecardPreview'
+import ScorecardPreview, { renderScorecard, ELECTION_CONFIG, daysUntil } from '@/components/ScorecardPreview'
 import SiteHeader from '@/components/SiteHeader'
 
 export default function ResultsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -25,6 +25,7 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
   const [ready, setReady] = useState(false)
   const [showScorecard, setShowScorecard] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [sharing, setSharing] = useState(false)
 
   useEffect(() => {
     const player = getClientSession()
@@ -78,18 +79,58 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
   }
 
   async function handleShare() {
-    const text = `I completed ${monument?.name} on Modexx.\n10 hotspots explored. ${attempt?.correctCount}/10 correct. ${attempt?.score}/1,000 points.\nCan you beat my score?\nmodexx.app/monuments/${monument?.slug}`
-    if (navigator.share) {
-      try { await navigator.share({ title: `My ${monument?.name} result`, text }) } catch {}
-    } else {
-      try {
-        await navigator.clipboard.writeText(text)
+    if (!monument || !attempt) return
+    setSharing(true)
+    try {
+      const accentColor  = monument.accent === 'green' ? '#168447' : '#46a9d8'
+      const electionCfg  = ELECTION_CONFIG[monument.slug as keyof typeof ELECTION_CONFIG]
+                        ?? ELECTION_CONFIG.tinubu
+      const completionSecs = attempt.submittedAt
+        ? Math.round((new Date(attempt.submittedAt).getTime() - new Date(attempt.startedAt).getTime()) / 1000)
+        : 0
+      const countdown = daysUntil(electionCfg.electionDate)
+
+      const blob = await renderScorecard({
+        monument,
+        displayName,
+        score: attempt.score,
+        correctCount: attempt.correctCount,
+        completionSeconds: completionSecs,
+        rank,
+        accentColor,
+        electionCfg,
+        countdown,
+      })
+
+      const shareText = [
+        `🏛 ${monument.name}`,
+        ``,
+        `I scored ${attempt.score}/1,000 pts — ${attempt.correctCount}/10 correct${rank ? ` · Ranked #${rank}` : ''}.`,
+        ``,
+        `🗳 ${electionCfg.cta} — ${countdown}`,
+        ``,
+        `Can you beat my score?`,
+        `modexx.app/monuments/${monument.slug}`,
+      ].join('\n')
+
+      const file = new File([blob], 'modexx-scorecard.png', { type: 'image/png' })
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title: `My ${monument.name} result`, text: shareText, files: [file] })
+      } else if (navigator.share) {
+        await navigator.share({ title: `My ${monument.name} result`, text: shareText })
+      } else {
+        await navigator.clipboard.writeText(shareText)
         setCopied(true)
-        toast.success('Result copied to clipboard!')
+        toast.success('Copied to clipboard!')
         setTimeout(() => setCopied(false), 2500)
-      } catch {
-        toast.error('Could not copy to clipboard.')
       }
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') {
+        toast.error('Could not share. Try downloading the scorecard instead.')
+      }
+    } finally {
+      setSharing(false)
     }
   }
 
@@ -136,7 +177,9 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
 
           <div className="results-actions">
             <button className="button button-primary" onClick={() => setShowScorecard(true)}><Share2 size={16} /> Create scorecard</button>
-            <button className="button" style={{ background: 'var(--soft)' }} onClick={handleShare}>{copied ? 'Copied!' : <><Share2 size={16} /> Share result</>}</button>
+            <button className="button" style={{ background: 'var(--soft)' }} onClick={handleShare} disabled={sharing}>
+              {sharing ? <><span className="spinner spinner--sm" aria-hidden /> Sharing…</> : copied ? 'Copied!' : <><Share2 size={16} /> Share result</>}
+            </button>
             <button className="button" style={{ background: 'var(--soft)' }} onClick={handleReplay}><RotateCcw size={16} /> Replay</button>
             <Link href={`/leaderboard/${monument.slug}`} className="button" style={{ background: 'var(--soft)' }}><Trophy size={16} /> Leaderboard</Link>
           </div>
