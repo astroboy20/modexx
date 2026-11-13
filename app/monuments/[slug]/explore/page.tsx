@@ -113,9 +113,9 @@ button.xp-trail-item:hover{background:var(--xp-tint)}
 .xp-marker--sm{width:28px;height:28px;font-size:11px}
 .xp-marker.is-done{background:var(--xp-accent);color:var(--xp-on);border-color:#fff}
 .xp-marker.is-active{scale:1.2;z-index:10}
-.xp-marker.is-current{width:46px;height:46px;z-index:10;background:var(--xp-accent);color:var(--xp-on);border:3px solid #fff}
-.xp-marker.is-current::before{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--xp-accent);animation:xp-ring 2s ease-out infinite;pointer-events:none}
-.xp-marker.is-scanned::before{animation:none;opacity:0}
+.xp-marker.is-current{width:36px;height:36px;z-index:10;background:var(--xp-accent);color:var(--xp-on);border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.xp-marker.is-current::after{content:"";position:absolute;right:-18px;top:50%;transform:translateY(-50%);width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:10px solid var(--xp-accent);pointer-events:none}
+.xp-marker.is-scanned::after{opacity:0}
 .xp-hint{margin:16px 0 0;text-align:center;font-size:13px;color:var(--muted)}
 
 /* QR modal */
@@ -128,11 +128,10 @@ button.xp-trail-item:hover{background:var(--xp-tint)}
 /* organizer next-target card */
 .xp-qr-side{display:grid;gap:12px;justify-items:center;text-align:center}
 
-@keyframes xp-ring{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.9);opacity:0}}
 @keyframes xp-blink{0%,100%{opacity:1}50%{opacity:.35}}
 @keyframes xp-pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){
-  .xp-dot--live,.xp-marker.is-current::before,.xp-scanned-icon,.xp-qr-card{animation:none}
+  .xp-dot--live,.xp-scanned-icon,.xp-qr-card{animation:none}
   .xp-marker,.xp-seg{transition:none}
 }
 `
@@ -378,6 +377,8 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
   const [scanDetectedId, setScanDetectedId] = useState<string | null>(null)
   const [story, setStory] = useState<{ id: string; mode: 'reveal' | 'review' } | null>(null)
   const [showQR, setShowQR] = useState(false)
+  // Gate: show full-screen QR for chapter 1 before exploration starts
+  const [gateScanned, setGateScanned] = useState(false)
 
   const foundRef = useRef(found)
   foundRef.current = found
@@ -422,6 +423,9 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
         setFound(ids)
         setLoadError(false)
 
+        // If the participant already has at least chapter 1, skip the gate
+        if (ids.size > 0) setGateScanned(true)
+
         // Arrived from the scanner page: show the story that was just unlocked
         const unlockId = justUnlockedRef.current
         if (unlockId && ids.has(unlockId)) {
@@ -462,6 +466,8 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
           markHotspotExplored(monument.slug, hotspot.id)
           setFound((prev) => new Set(prev).add(hotspot.id))
           setShowQR(false)
+          // If this was the gate hotspot (chapter 1), dismiss the gate
+          if (hotspot.displayOrder === 1) setGateScanned(true)
           setScanDetectedId(hotspot.id)
 
           // Short beat so the person sees the scan register before the story opens
@@ -515,6 +521,91 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
       <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', alignContent: 'center', gap: 12 }}>
         <span className="spinner spinner--lg" aria-hidden="true" />
         <p className="xp-muted" role="status">Loading your progress…</p>
+      </div>
+    )
+  }
+
+  // ── Gate screen: participant hasn't scanned anything yet ──────────────────
+  const firstHotspot = sortedHotspots[0]
+  const showGate = !gateScanned && found.size === 0 && firstHotspot
+
+  if (showGate) {
+    return (
+      <div
+        className="xp-scope"
+        style={{
+          ...scopeStyle(accentColor),
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '32px 24px',
+          background: 'var(--bg, #f8f9fa)',
+          textAlign: 'center',
+        }}
+      >
+        <style>{STYLES}</style>
+        <SiteHeader
+          className="detail-header explore-fixed-header"
+          left={
+            <Link href={`/monuments/${monument.slug}`} className="text-link">
+              <ArrowLeft size={16} /> Back
+            </Link>
+          }
+        />
+        <div
+          style={{
+            marginTop: 72,
+            display: 'grid',
+            gap: 20,
+            justifyItems: 'center',
+            maxWidth: 360,
+            width: '100%',
+          }}
+        >
+          <p className="eyebrow" style={{ color: 'var(--ink)', margin: 0 }}>
+            <span className="eyebrow-line" style={{ background: accentColor }} />
+            {monument.subject}
+          </p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.3 }}>
+            {monument.name}
+          </h1>
+          <p style={{ margin: 0, fontSize: 14, color: 'var(--muted)', lineHeight: 1.6 }}>
+            Scan the QR code below with your phone to unlock chapter 1 and begin the exploration.
+          </p>
+
+          <div className="xp-qr-frame" style={{ marginTop: 8 }}>
+            <HotspotQRCode
+              slug={monument.slug}
+              hotspotId={firstHotspot.id}
+              size={220}
+              bgColor="#ffffff"
+              fgColor="#101418"
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
+              Chapter 1: {firstHotspot.label}
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>
+              {firstHotspot.metaphor}
+            </p>
+          </div>
+
+          <LiveStatus connection={connection} />
+
+          {loadError && (
+            <div className="xp-alert" role="alert">
+              <AlertCircle size={16} />
+              <span>Couldn&apos;t load your progress.</span>
+              <button type="button" onClick={() => reloadRef.current()}>
+                <RefreshCw size={13} /> Retry
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     )
   }
@@ -594,7 +685,7 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
                     </p>
                     <blockquote className="xp-clue">{focusHotspot!.metaphor}</blockquote>
                     <ol className="xp-steps">
-                      <li>Find the pulsing marker on the portrait.</li>
+                      <li>Find the numbered marker on the portrait — it has an arrow.</li>
                       <li>Show its QR code and scan it with your phone.</li>
                       <li>The story opens here automatically.</li>
                     </ol>
@@ -701,7 +792,7 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
             </div>
           </div>
 
-          {!allFound && <p className="xp-hint">Tap the pulsing marker to show its QR code.</p>}
+          {!allFound && <p className="xp-hint">Tap the numbered marker → to show its QR code.</p>}
         </div>
       </div>
 
