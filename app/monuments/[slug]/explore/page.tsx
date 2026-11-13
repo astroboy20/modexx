@@ -156,13 +156,13 @@ function ProgressSegments({ total, count, label }: { total: number; count: numbe
 function LiveStatus({ connection }: { connection: Connection }) {
   const text =
     connection === 'live'
-      ? 'Waiting for your scan'
+      ? ''
       : connection === 'offline'
         ? 'Connection lost. Reconnecting…'
         : 'Connecting…'
   return (
     <p className="xp-status">
-      <span className={`xp-dot xp-dot--${connection}`} aria-hidden="true" />
+      {/* <span className={`xp-dot xp-dot--${connection}`} aria-hidden="true" /> */}
       {text}
     </p>
   )
@@ -426,13 +426,19 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
         // If the participant already has at least chapter 1, skip the gate
         if (ids.size > 0) setGateScanned(true)
 
-        // Arrived from the scanner page: show the story that was just unlocked
+        // Arrived from the scanner page — handle both single and gate (all) unlocks
         const unlockId = justUnlockedRef.current
-        if (unlockId && ids.has(unlockId)) {
-          justUnlockedRef.current = undefined
-          setStory({ id: unlockId, mode: 'reveal' })
-          // Drop ?unlocked= so a refresh doesn't replay the reveal
-          router.replace(`/monuments/${monument.slug}/explore`, { scroll: false })
+        if (unlockId) {
+          if (unlockId === '__all__') {
+            // Gate scan unlocked everything — gate is already bypassed via ids.size > 0
+            justUnlockedRef.current = undefined
+            router.replace(`/monuments/${monument.slug}/explore`, { scroll: false })
+          } else if (ids.has(unlockId)) {
+            justUnlockedRef.current = undefined
+            setStory({ id: unlockId, mode: 'reveal' })
+            // Drop ?unlocked= so a refresh doesn't replay the reveal
+            router.replace(`/monuments/${monument.slug}/explore`, { scroll: false })
+          }
         }
       } catch (err) {
         console.error('[Explore] Failed to load progress:', err)
@@ -466,11 +472,19 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
           markHotspotExplored(monument.slug, hotspot.id)
           setFound((prev) => new Set(prev).add(hotspot.id))
           setShowQR(false)
-          // If this was the gate hotspot (chapter 1), dismiss the gate
-          if (hotspot.displayOrder === 1) setGateScanned(true)
-          setScanDetectedId(hotspot.id)
 
-          // Short beat so the person sees the scan register before the story opens
+          // If this is part of a bulk gate unlock (found was empty), just
+          // silently add all chapters — don't cascade story panels
+          const wasEmpty = foundRef.current.size === 0
+          setGateScanned(true)
+
+          if (wasEmpty) {
+            // First event of a gate scan — just mark and move on, no story popup
+            return
+          }
+
+          // Single-hotspot scan — show the scan feedback then open the story
+          setScanDetectedId(hotspot.id)
           const t = window.setTimeout(() => {
             if (!isMounted) return
             setScanDetectedId(null)
@@ -531,21 +545,71 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
 
   if (showGate) {
     return (
-      <div
-        className="xp-scope"
-        style={{
-          ...scopeStyle(accentColor),
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '32px 24px',
-          background: 'var(--bg, #f8f9fa)',
-          textAlign: 'center',
-        }}
-      >
+      <div className="xp-scope" style={{ ...scopeStyle(accentColor), minHeight: '100vh', background: 'var(--bg, #f8f9fa)' }}>
         <style>{STYLES}</style>
+        <style>{`
+          .gate-layout {
+            min-height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr;
+          }
+          .gate-body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 24px;
+          }
+          .gate-inner {
+            display: grid;
+            gap: 0;
+            width: 100%;
+            max-width: 900px;
+            grid-template-columns: 1fr;
+          }
+          .gate-info {
+            display: grid;
+            gap: 16px;
+            padding: 32px 0 0;
+            text-align: center;
+            justify-items: center;
+          }
+          .gate-qr-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 0 0;
+          }
+          .gate-chapters {
+            display: none;
+          }
+          @media (min-width: 768px) {
+            .gate-inner {
+              grid-template-columns: 1fr 1fr;
+              gap: 48px;
+              align-items: center;
+            }
+            .gate-info {
+              text-align: left;
+              justify-items: start;
+              padding: 0;
+              order: 1;
+            }
+            .gate-qr-wrap {
+              order: 2;
+              padding: 0;
+              flex-direction: column;
+              gap: 16px;
+            }
+            .gate-chapters {
+              display: grid;
+              gap: 6px;
+              width: 100%;
+              max-height: 320px;
+              overflow-y: auto;
+            }
+          }
+        `}</style>
+
         <SiteHeader
           className="detail-header explore-fixed-header"
           left={
@@ -554,57 +618,88 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
             </Link>
           }
         />
-        <div
-          style={{
-            marginTop: 72,
-            display: 'grid',
-            gap: 20,
-            justifyItems: 'center',
-            maxWidth: 360,
-            width: '100%',
-          }}
-        >
-          <p className="eyebrow" style={{ color: 'var(--ink)', margin: 0 }}>
-            <span className="eyebrow-line" style={{ background: accentColor }} />
-            {monument.subject}
-          </p>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: 'var(--ink)', lineHeight: 1.3 }}>
-            {monument.name}
-          </h1>
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--muted)', lineHeight: 1.6 }}>
-            Scan the QR code below with your phone to unlock chapter 1 and begin the exploration.
-          </p>
 
-          <div className="xp-qr-frame" style={{ marginTop: 8 }}>
-            <HotspotQRCode
-              slug={monument.slug}
-              hotspotId={firstHotspot.id}
-              size={220}
-              bgColor="#ffffff"
-              fgColor="#101418"
-            />
-          </div>
+        <div className="gate-layout" style={{ paddingTop: 56 }}>
+          <div className="gate-body">
+            <div className="gate-inner">
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>
-              Chapter 1: {firstHotspot.label}
-            </p>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--muted)', fontStyle: 'italic' }}>
-              {firstHotspot.metaphor}
-            </p>
-          </div>
+              {/* Left / top — info */}
+              <div className="gate-info">
+                <p className="eyebrow" style={{ color: 'var(--ink)', margin: 0 }}>
+                  <span className="eyebrow-line" style={{ background: accentColor }} />
+                  {monument.subject}
+                </p>
+                <h1 style={{ margin: 0, fontSize: 'clamp(20px, 4vw, 30px)', fontWeight: 700, color: 'var(--ink)', lineHeight: 1.25 }}>
+                  {monument.name}
+                </h1>
+                <p style={{ margin: 0, fontSize: 15, color: 'var(--muted)', lineHeight: 1.65, maxWidth: 400 }}>
+                  Scan the QR code with your phone to unlock all {total} chapters and begin the exploration.
+                </p>
 
-          <LiveStatus connection={connection} />
+                {/* Chapter list — desktop only */}
+                <div className="gate-chapters">
+                  {sortedHotspots.map((h) => (
+                    <div
+                      key={h.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '7px 10px',
+                        borderRadius: 8,
+                        background: 'color-mix(in srgb, var(--xp-accent) 6%, transparent)',
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: 'grid',
+                          placeItems: 'center',
+                          width: 24,
+                          height: 24,
+                          borderRadius: '50%',
+                          background: accentColor,
+                          color: '#fff',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {h.displayOrder}
+                      </span>
+                      <span style={{ fontSize: 13, color: 'var(--ink)' }}>{h.label}</span>
+                    </div>
+                  ))}
+                </div>
 
-          {loadError && (
-            <div className="xp-alert" role="alert">
-              <AlertCircle size={16} />
-              <span>Couldn&apos;t load your progress.</span>
-              <button type="button" onClick={() => reloadRef.current()}>
-                <RefreshCw size={13} /> Retry
-              </button>
+                <LiveStatus connection={connection} />
+
+                {loadError && (
+                  <div className="xp-alert" role="alert">
+                    <AlertCircle size={16} />
+                    <span>Couldn&apos;t load your progress.</span>
+                    <button type="button" onClick={() => reloadRef.current()}>
+                      <RefreshCw size={13} /> Retry
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Right / bottom — QR code */}
+              <div className="gate-qr-wrap">
+                <div className="xp-qr-frame">
+                  <HotspotQRCode
+                    slug={monument.slug}
+                    hotspotId="__all__"
+                    size={240}
+                    bgColor="#ffffff"
+                    fgColor="#101418"
+                  />
+                </div>
+              
+              </div>
+
             </div>
-          )}
+          </div>
         </div>
       </div>
     )

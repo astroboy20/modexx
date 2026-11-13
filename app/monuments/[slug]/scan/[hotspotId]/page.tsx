@@ -6,6 +6,7 @@ import { CheckCircle2, XCircle } from 'lucide-react'
 import { getClientSession } from '@/lib/session-client'
 import { markHotspotExplored } from '@/lib/storage'
 import { getWebSocketClient } from '@/lib/websocket'
+import { getMonument } from '@/lib/data/index'
 
 export default function ScanPage({ params }: { params: Promise<{ slug: string; hotspotId: string }> }) {
   const { slug, hotspotId } = React.use(params)
@@ -13,61 +14,102 @@ export default function ScanPage({ params }: { params: Promise<{ slug: string; h
   const [status, setStatus] = useState<'saving' | 'success' | 'error'>('saving')
   const [errorMsg, setErrorMsg] = useState('')
 
+  // __all__ is the special gate hotspot ID — unlock every chapter at once
+  const isGateScan = hotspotId === '__all__'
+
   useEffect(() => {
     let cancelled = false
 
     async function saveAndBroadcast() {
       const player = getClientSession()
       if (!player) {
-        // Not authenticated — redirect to sign-in
         router.replace(`/signin?redirect=/monuments/${slug}/scan/${hotspotId}`)
         return
       }
 
       try {
-        // 1. Persist to database (source of truth)
-        const res = await fetch('/api/progress', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ monumentSlug: slug, hotspotId }),
-        })
+        if (isGateScan) {
+          // ── Gate scan: unlock ALL hotspots for this monument ──────────────
+          const monument = getMonument(slug)
+          if (!monument) throw new Error('Monument not found')
 
-        if (!res.ok && res.status !== 409) {
-          // 409 = already exists (duplicate scan) — still treat as success
-          const data = await res.json().catch(() => ({}))
-          throw new Error(data.error || `HTTP ${res.status}`)
+          const allIds = monument.hotspots.map((h) => h.id)
+
+          // 1. Bulk-save to database
+          const res = await fetch('/api/progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ monumentSlug: slug, hotspotIds: allIds }),
+          })
+
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}))
+            throw new Error(data.error || `HTTP ${res.status}`)
+          }
+
+          if (cancelled) return
+
+          // 2. Mirror all to localStorage
+          allIds.forEach((id) => markHotspotExplored(slug, id))
+
+          // 3. Broadcast each hotspot unlock via WebSocket
+          try {
+            const ws = getWebSocketClient(player.id, player.displayName)
+            if (!ws.isConnected()) await ws.connect()
+            ws.joinMonument(slug)
+            // Broadcast each ID so the explore page receives individual unlock events
+            for (const id of allIds) {
+              ws.sendScannerDetection(slug, id)
+            }
+          } catch (wsErr) {
+            console.warn('[ScanPage] WebSocket broadcast failed:', wsErr)
+          }
+
+          if (cancelled) return
+          setStatus('success')
+
+          setTimeout(() => {
+            if (!cancelled) router.push(`/monuments/${slug}/explore?unlocked=__all__`)
+          }, 1800)
+        } else {
+          // ── Single hotspot scan ───────────────────────────────────────────
+          const res = await fetch('/api/progress', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ monumentSlug: slug, hotspotId }),
+          })
+
+          if (!res.ok && res.status !== 409) {
+            const data = await res.json().catch(() => ({}))
+            throw new Error(data.error || `HTTP ${res.status}`)
+          }
+
+          if (cancelled) return
+
+          markHotspotExplored(slug, hotspotId)
+
+          try {
+            const ws = getWebSocketClient(player.id, player.displayName)
+            if (!ws.isConnected()) await ws.connect()
+            ws.joinMonument(slug)
+            ws.sendScannerDetection(slug, hotspotId)
+          } catch (wsErr) {
+            console.warn('[ScanPage] WebSocket broadcast failed:', wsErr)
+          }
+
+          if (cancelled) return
+          setStatus('success')
+
+          setTimeout(() => {
+            if (!cancelled) router.push(`/monuments/${slug}/explore?unlocked=${hotspotId}`)
+          }, 1800)
         }
-
-        if (cancelled) return
-
-        // 2. Mirror to localStorage for offline/fast reads
-        markHotspotExplored(slug, hotspotId)
-
-        // 3. Broadcast via WebSocket so the explore page updates in real time
-        try {
-          const ws = getWebSocketClient(player.id, player.displayName)
-          if (!ws.isConnected()) await ws.connect()
-          ws.joinMonument(slug)
-          ws.sendScannerDetection(slug, hotspotId)
-        } catch (wsErr) {
-          // Non-fatal — DB already has the record
-          console.warn('[ScanPage] WebSocket broadcast failed:', wsErr)
-        }
-
-        if (cancelled) return
-        setStatus('success')
-
-        // Redirect back to explore, passing the just-unlocked hotspot so the story shows
-        setTimeout(() => {
-          if (!cancelled) router.push(`/monuments/${slug}/explore?unlocked=${hotspotId}`)
-        }, 1800)
       } catch (err) {
         if (cancelled) return
         console.error('[ScanPage] Save error:', err)
         setErrorMsg(err instanceof Error ? err.message : 'Unknown error')
         setStatus('error')
 
-        // Retry redirect after showing the error
         setTimeout(() => {
           if (!cancelled) router.push(`/monuments/${slug}/explore`)
         }, 3000)
@@ -79,7 +121,7 @@ export default function ScanPage({ params }: { params: Promise<{ slug: string; h
     return () => {
       cancelled = true
     }
-  }, [slug, hotspotId, router])
+  }, [slug, hotspotId, isGateScan, router])
 
   const isSuccess = status === 'success'
   const bgGradient = isSuccess
@@ -114,7 +156,6 @@ export default function ScanPage({ params }: { params: Promise<{ slug: string; h
           border: '2px solid rgba(255, 255, 255, 0.2)',
         }}
       >
-        {/* Icon */}
         <div
           style={{
             width: '80px',
@@ -144,7 +185,6 @@ export default function ScanPage({ params }: { params: Promise<{ slug: string; h
           {status === 'error' && <XCircle size={48} style={{ color: '#fff' }} />}
         </div>
 
-        {/* Title */}
         <h1
           style={{
             fontSize: '28px',
@@ -153,12 +193,11 @@ export default function ScanPage({ params }: { params: Promise<{ slug: string; h
             animation: status !== 'saving' ? 'fadeIn 0.5s ease-out 0.2s both' : undefined,
           }}
         >
-          {status === 'saving' && 'Saving scan…'}
-          {status === 'success' && 'Scan Successful!'}
+          {status === 'saving' && 'Unlocking…'}
+          {status === 'success' && 'All Chapters Unlocked!'}
           {status === 'error' && 'Scan Failed'}
         </h1>
 
-        {/* Subtitle */}
         <p
           style={{
             fontSize: '16px',
@@ -167,8 +206,10 @@ export default function ScanPage({ params }: { params: Promise<{ slug: string; h
             animation: status !== 'saving' ? 'fadeIn 0.5s ease-out 0.4s both' : undefined,
           }}
         >
-          {status === 'saving' && 'Unlocking hotspot…'}
-          {status === 'success' && 'Hotspot unlocked! Returning to exploration…'}
+          {status === 'saving' && (isGateScan ? 'Unlocking all chapters for you…' : 'Unlocking chapter…')}
+          {status === 'success' && (isGateScan
+            ? 'Every chapter is now open. Returning to exploration…'
+            : 'Chapter unlocked! Returning to exploration…')}
           {status === 'error' && (errorMsg || 'Could not save. Returning to explore page…')}
         </p>
       </div>

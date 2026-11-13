@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 }
 
 // ── POST /api/progress
-// Records a scanned hotspot
+// Records a scanned hotspot, or bulk-records all hotspots when hotspotIds array is provided
 
 export async function POST(req: NextRequest) {
   const player = await getSessionPlayer()
@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
   let body: {
     monumentSlug?: string
     hotspotId?: string
+    hotspotIds?: string[]
   }
   try {
     body = await req.json()
@@ -63,10 +64,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
   }
 
-  const { monumentSlug, hotspotId } = body
+  const { monumentSlug, hotspotId, hotspotIds } = body
 
-  if (!monumentSlug || !hotspotId) {
-    return NextResponse.json({ error: 'Missing monumentSlug or hotspotId.' }, { status: 400 })
+  if (!monumentSlug) {
+    return NextResponse.json({ error: 'Missing monumentSlug.' }, { status: 400 })
+  }
+
+  // ── Bulk unlock: array of hotspot IDs ────────────────────────────────────
+  if (hotspotIds && hotspotIds.length > 0) {
+    const rows = hotspotIds.map((id) => ({
+      player_id: player.id,
+      monument_slug: monumentSlug,
+      hotspot_id: id,
+    }))
+
+    const { error } = await supabaseAdmin
+      .from('exploration_progress')
+      .upsert(rows, { onConflict: 'player_id,monument_slug,hotspot_id' })
+
+    if (error && error.code !== '23505') {
+      console.error('Bulk progress insert error:', error)
+      return NextResponse.json({ error: 'Failed to save progress.' }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true, unlocked: hotspotIds.length })
+  }
+
+  // ── Single hotspot ────────────────────────────────────────────────────────
+  if (!hotspotId) {
+    return NextResponse.json({ error: 'Missing hotspotId or hotspotIds.' }, { status: 400 })
   }
 
   // Upsert - won't create duplicates due to unique constraint
