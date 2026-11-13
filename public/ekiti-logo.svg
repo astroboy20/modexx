@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 460" width="400" height="460">
+  <!-- === Shield outline === -->
+  <path d="M200 18 L382 72 L382 220 Q382 360 200 442 Q18 360 18 220 L18 72 Z"
+        fill="#005A30" stroke="#fff" stroke-width="4"/>
+  <path d="M200 32 L368 82 L368 218 Q368 348 200 426 Q32 348 32 218 L32 82 Z"
+        fill="none" stroke="#FFD700" stroke-width="2.5"/>
+
+  <!-- === ELEMENT 1: THE NEW DAWN (top — rising sun) === -->
+  <!-- Sun rays -->
+  <line x1="200" y1="52" x2="200" y2="38" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+  <line x1="220" y1="57" x2="228" y2="45" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+  <line x1="237" y1="70" x2="248" y2="62" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+  <line x1="180" y1="57" x2="172" y2="45" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+  <line x1="163" y1="70" x2="152" y2="62" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+  <!-- Horizon line -->
+  <path d="M148 98 Q200 82 252 98" fill="none" stroke="#FFD700" stroke-width="2.5"/>
+  <!-- Sun semi-circle -->
+  <path d="M160 98 Q200 60 240 98 Z" fill="#FFD700"/>
+
+  <!-- === ELEMENT 2: ROLLING HILLS (left side) === -->
+  <path d="M50 190 Q90 150 130 180 Q160 155 185 175"
+        fill="none" stroke="#8BC34A" stroke-width="5" stroke-linecap="round"/>
+  <path d="M46 200 Q90 160 130 188 Q160 162 188 182 L188 230 L46 230 Z"
+        fill="#4CAF50" opacity="0.75"/>
+
+  <!-- === ELEMENT 3: VEGETATION (right side) === -->
+  <!-- Tree 1 -->
+  <circle cx="290" cy="175" r="22" fill="#388E3C"/>
+  <rect x="287" y="192" width="6" height="20" fill="#5D4037"/>
+  <!-- Tree 2 -->
+  <circle cx="318" cy="185" r="18" fill="#2E7D32"/>
+  <rect x="315" y="200" width="6" height="16" fill="#5D4037"/>
+  <!-- Tree 3 -->
+  <circle cx="262" cy="183" r="17" fill="#43A047"/>
+  <rect x="259" y="197" width="6" height="16" fill="#5D4037"/>
+
+  <!-- === ELEMENT 4: THE WATER (Ikogosi Spring — centre) === -->
+  <!-- Hot spring left -->
+  <path d="M148 290 Q155 270 162 285 Q169 265 176 280 Q183 260 190 275"
+        fill="none" stroke="#FF7043" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Cold spring right -->
+  <path d="M210 275 Q217 260 224 280 Q231 265 238 285 Q245 270 252 290"
+        fill="none" stroke="#42A5F5" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Confluence pool -->
+  <ellipse cx="200" cy="308" rx="52" ry="16" fill="#1565C0" opacity="0.55"/>
+  <ellipse cx="200" cy="306" rx="38" ry="10" fill="#42A5F5" opacity="0.65"/>
+  <!-- Hot / Cold label lines -->
+  <line x1="162" y1="295" x2="195" y2="306" stroke="#FF7043" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="238" y1="295" x2="205" y2="306" stroke="#42A5F5" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- === ELEMENT 5: THE BOOK (bottom) === -->
+  <!-- Book body -->
+  <rect x="128" y="345" width="144" height="58" rx="4" fill="#FFD700"/>
+  <!-- Spine -->
+  <rect x="196" y="345" width="8" height="58" fill="#E6AC00"/>
+  <!-- Left page lines -->
+  <line x1="140" y1="362" x2="192" y2="362" stroke="#005A30" stroke-width="2"/>
+  <line x1="140" y1="372" x2="192" y2="372" stroke="#005A30" stroke-width="2"/>
+  <line x1="140" y1="382" x2="192" y2="382" stroke="#005A30" stroke-width="2"/>
+  <!-- Right page lines -->
+  <line x1="208" y1="362" x2="260" y2="362" stroke="#005A30" stroke-width="2"/>
+  <line x1="208" y1="372" x2="260" y2="372" stroke="#005A30" stroke-width="2"/>
+  <line x1="208" y1="382" x2="260" y2="382" stroke="#005A30" stroke-width="2"/>
+
+  <!-- === Banner === -->
+  <rect x="68" y="416" width="264" height="32" rx="4" fill="#FFD700"/>
+  <text x="200" y="437" text-anchor="middle"
+        font-family="Georgia, serif" font-size="13" font-weight="bold"
+        fill="#005A30" letter-spacing="1.5">EKITI STATE</text>
+
+  <!-- === Motto beneath banner === -->
+  <text x="200" y="456" text-anchor="middle"
+        font-family="Georgia, serif" font-size="9" fill="#FFD700" letter-spacing="1">
+    FOUNTAIN OF KNOWLEDGE
+  </text>
+</svg>

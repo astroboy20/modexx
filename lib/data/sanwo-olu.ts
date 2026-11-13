@@ -8,6 +8,7 @@ export const sanwoOluMonument: Monument = {
   office: 'Governor of Lagos State',
   scope: 'Governorship · 29 May 2019 — present',
   accent: 'blue',
+  image: '/sanwo-olu.png',
   intro:
     "Explore the people, places, and public decisions behind Lagos's evolving story of leadership and possibility. 10 chapters covering the governorship of Babajide Sanwo-Olu.",
   hotspots: [

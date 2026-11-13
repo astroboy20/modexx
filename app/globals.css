@@ -815,3 +815,29 @@ a { color:inherit; text-decoration:none; }
     animation: none !important;
   }
 }
+
+/* ── Hero Carousel ──────────────────────────────────────────────────────── */
+.hero-carousel { overflow:hidden; }
+.carousel-slide { position:absolute; inset:0; opacity:0; transition:opacity 700ms ease-in-out; }
+.carousel-slide--active { opacity:1; }
+.carousel-img { width:100%; height:100%; object-fit:cover; object-position:top center; display:block; }
+.carousel-overlay { position:absolute; inset:0; background:linear-gradient(to bottom, rgba(0,0,0,.18) 0%, rgba(0,0,0,.44) 100%); }
+.carousel-caption { position:absolute; left:28px; bottom:48px; color:#fff; z-index:2; }
+.carousel-name { font-size:17px; font-weight:800; letter-spacing:-.5px; margin:0 0 2px; }
+.carousel-role { font-size:12px; opacity:.82; margin:0; letter-spacing:.3px; }
+.carousel-dots { position:absolute; right:24px; bottom:26px; display:flex; gap:7px; z-index:2; }
+.carousel-dot { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.45); border:none; cursor:pointer; padding:0; transition:background 200ms, transform 200ms; }
+.carousel-dot--active { background:#fff; transform:scale(1.3); }
+.hero-carousel .marker { z-index:3; }
+.hero-carousel .art-index { z-index:3; }
+.hero-carousel .art-grid { z-index:1; }
+
+/* Logo carousel slide variant */
+.carousel-slide--logo { background:#004d26; }
+.carousel-img--logo {
+  position:absolute;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  width:68%; height:auto;
+  object-fit:contain;
+}

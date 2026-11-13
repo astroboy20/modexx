@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { ArrowLeft, ArrowRight, LockKeyhole, Play, Trophy } from 'lucide-react'
 import { notFound } from 'next/navigation'
-import { getMonument } from '@/lib/data/index'
+import { getMonument, allMonuments } from '@/lib/data/index'
 import SiteHeader from '@/components/SiteHeader'
 
 export function generateStaticParams() {
-  return [{ slug: 'tinubu' }, { slug: 'sanwo-olu' }]
+  return [{ slug: 'tinubu' }, { slug: 'sanwo-olu' }, { slug: 'oyebanji' }, { slug: 'ekiti-logo' }]
 }
 
 export default async function MonumentPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -40,15 +40,16 @@ export default async function MonumentPage({ params }: { params: Promise<{ slug:
           </div>
         </div>
         <div className="detail-art" aria-label={`${m.subject} portrait`} role="img" style={{ overflow: 'hidden', background: m.accent === 'green' ? '#eaf2ee' : '#e7f2f8' }}>
-          <span className="detail-art-number">{slug === 'tinubu' ? '01' : '02'}</span>
+          <span className="detail-art-number">{String(allMonuments.findIndex(x => x.slug === slug) + 1).padStart(2, '0')}</span>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={slug === 'tinubu' ? '/tinubu-president.jpg' : '/sanwo-olu.png'}
+            src={m.image}
             alt={m.subject}
             style={{
               position: 'absolute', inset: 0,
               width: '100%', height: '100%',
-              objectFit: 'cover', objectPosition: 'top center',
+              objectFit: m.portraitFit ?? 'cover',
+              objectPosition: 'top center',
               display: 'block',
             }}
           />

@@ -8,6 +8,7 @@ export const tinubuMonument: Monument = {
   office: 'President of Nigeria',
   scope: 'Presidency · 29 May 2023 — present',
   accent: 'green',
+  image: '/tinubu-president.jpg',
   intro:
     "A guided monument through the moments, movements, and milestones shaping a new chapter in Nigeria's story. Explore 10 connected chapters covering the presidency of Bola Ahmed Tinubu.",
   hotspots: [

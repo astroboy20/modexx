@@ -45,6 +45,9 @@ export interface Monument {
   scope: string
   accent: Accent
   intro: string
+  image: string            // portrait/subject image path used across all monument views
+  portraitFit?: 'cover' | 'contain'   // how the image fills the portrait container (default: cover)
+  emblem?: string          // optional state/org emblem
   hotspots: Hotspot[]
   stories: Story[]
   questions: Question[]

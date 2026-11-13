@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -22,10 +22,47 @@ interface Props {
   user: SessionUser | null;
 }
 
+const heroSlides = [
+  {
+    img: "/tinubu-president.jpg",
+    label: "Bola Ahmed Tinubu",
+    sub: "President of Nigeria",
+    index: "MX / 001",
+  },
+  {
+    img: "/sanwo-olu.png",
+    label: "Babajide Sanwo-Olu",
+    sub: "Governor, Lagos State",
+    index: "MX / 002",
+  },
+  {
+    img: "/hamzat.jpg",
+    label: "Biodun Oyebanji",
+    sub: "Governor, Ekiti State",
+    index: "MX / 003",
+  },
+  {
+    img: "/ekiti-logo.jfif",
+    label: "Ekiti State Coat of Arms",
+    sub: "Fountain of Knowledge",
+    index: "MX / 004",
+    isLogo: true,
+  },
+];
+
 export default function LandingClient({ user }: Props) {
   const router = useRouter();
   const [activeHotspot, setActiveHotspot] = useState(1);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [slideIndex, setSlideIndex] = useState(0);
+
+  // Auto-advance carousel every 3.5 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSlideIndex((prev) => (prev + 1) % heroSlides.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, []);
 
   const demoStories = [
     "A monument is more than an object. It is a way into the moments, choices, and people that shaped a story.",
@@ -214,31 +251,51 @@ export default function LandingClient({ user }: Props) {
           </div>
         </div>
         <div
-          className="hero-art"
-          aria-label="Abstract digital monument illustration"
+          className="hero-art hero-carousel"
+          aria-label="Monument highlights carousel"
         >
           <div className="art-grid" />
-          <div className="monument-form">
-            <div className="form-cutout" />
-            <div className="form-line line-one" />
-            <div className="form-line line-two" />
-            <div className="form-line line-three" />
+
+          {/* Slides */}
+          {heroSlides.map((slide, i) => (
+            <div
+              key={slide.index}
+              className={`carousel-slide ${i === slideIndex ? "carousel-slide--active" : ""}${slide.isLogo ? " carousel-slide--logo" : ""}`}
+              aria-hidden={i !== slideIndex}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={slide.img}
+                alt={slide.label}
+                className={slide.isLogo ? "carousel-img carousel-img--logo" : "carousel-img"}
+              />
+              {!slide.isLogo && <div className="carousel-overlay" />}
+            </div>
+          ))}
+
+          {/* Persistent overlays */}
+          <div className="marker marker-one"><span>01</span></div>
+          <div className="marker marker-two"><span>02</span></div>
+          <div className="marker marker-three"><span>03</span></div>
+
+          {/* Caption */}
+          <div className="carousel-caption">
+            <p className="carousel-name">{heroSlides[slideIndex].label}</p>
+            <p className="carousel-role">{heroSlides[slideIndex].sub}</p>
           </div>
-          <div className="marker marker-one">
-            <span>01</span>
+
+          {/* Index + dots */}
+          <span className="art-index">{heroSlides[slideIndex].index}</span>
+          <div className="carousel-dots">
+            {heroSlides.map((_, i) => (
+              <button
+                key={i}
+                className={`carousel-dot ${i === slideIndex ? "carousel-dot--active" : ""}`}
+                onClick={() => setSlideIndex(i)}
+                aria-label={`Go to slide ${i + 1}`}
+              />
+            ))}
           </div>
-          <div className="marker marker-two">
-            <span>02</span>
-          </div>
-          <div className="marker marker-three">
-            <span>03</span>
-          </div>
-          <p className="art-caption">
-            A story is
-            <br />
-            <strong>never one-dimensional.</strong>
-          </p>
-          <span className="art-index">MX / 001</span>
         </div>
       </section>
 

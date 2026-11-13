@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" width="200" height="220">
+  <!-- Shield background -->
+  <path d="M100 10 L190 45 L190 120 Q190 175 100 210 Q10 175 10 120 L10 45 Z" fill="#006633" stroke="#fff" stroke-width="3"/>
+  <!-- Inner shield border -->
+  <path d="M100 22 L178 53 L178 118 Q178 168 100 198 Q22 168 22 118 L22 53 Z" fill="none" stroke="#FFD700" stroke-width="2.5"/>
+  <!-- Book symbol (Fountain of Knowledge) -->
+  <rect x="72" y="70" width="56" height="42" rx="2" fill="#FFD700" opacity="0.9"/>
+  <line x1="100" y1="70" x2="100" y2="112" stroke="#006633" stroke-width="2.5"/>
+  <line x1="78" y1="80" x2="96" y2="80" stroke="#006633" stroke-width="1.8"/>
+  <line x1="78" y1="88" x2="96" y2="88" stroke="#006633" stroke-width="1.8"/>
+  <line x1="78" y1="96" x2="96" y2="96" stroke="#006633" stroke-width="1.8"/>
+  <line x1="104" y1="80" x2="122" y2="80" stroke="#006633" stroke-width="1.8"/>
+  <line x1="104" y1="88" x2="122" y2="88" stroke="#006633" stroke-width="1.8"/>
+  <line x1="104" y1="96" x2="122" y2="96" stroke="#006633" stroke-width="1.8"/>
+  <!-- Fountain arc -->
+  <path d="M82 60 Q100 42 118 60" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+  <!-- Water drops -->
+  <circle cx="82" cy="62" r="3" fill="#FFD700"/>
+  <circle cx="100" cy="44" r="3" fill="#FFD700"/>
+  <circle cx="118" cy="62" r="3" fill="#FFD700"/>
+  <!-- Bottom banner -->
+  <rect x="38" y="156" width="124" height="26" rx="3" fill="#FFD700"/>
+  <text x="100" y="174" text-anchor="middle" font-family="Georgia, serif" font-size="10.5" font-weight="bold" fill="#006633" letter-spacing="1">EKITI STATE</text>
+  <!-- Bottom motto band -->
+  <path d="M50 185 Q100 198 150 185" fill="none" stroke="#FFD700" stroke-width="1.5"/>
+  <text x="100" y="196" text-anchor="middle" font-family="Georgia, serif" font-size="8" fill="#FFD700" letter-spacing=".5">FOUNTAIN OF KNOWLEDGE</text>
+</svg>

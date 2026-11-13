@@ -1,19 +1,173 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ArrowRight, CheckCircle2, X, ExternalLink, ChevronLeft, ChevronRight, AlertCircle, Scan, Camera } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  Camera,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Lock,
+  QrCode,
+  RefreshCw,
+  X,
+} from 'lucide-react'
 import { getMonument } from '@/lib/data/index'
 import type { Monument, Hotspot, Story } from '@/lib/data/index'
-import {
-  getExploredHotspots,
-  markHotspotExplored,
-} from '@/lib/storage'
+import { getExploredHotspots, markHotspotExplored } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
 import { getWebSocketClient } from '@/lib/websocket'
 import SiteHeader from '@/components/SiteHeader'
 import HotspotQRCode from '@/components/HotspotQRCode'
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+/** Pick white or near-black text, whichever has better contrast on the accent. */
+function readableOn(hex: string): string {
+  const h = hex.replace('#', '')
+  const lin = [0, 2, 4].map((i) => {
+    const c = parseInt(h.slice(i, i + 2), 16) / 255
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+  })
+  const L = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+  const darkL = 0.009
+  return 1.05 / (L + 0.05) >= (L + 0.05) / (darkL + 0.05) ? '#ffffff' : '#0f1a20'
+}
+
+function scopeStyle(accent: string): React.CSSProperties {
+  return { '--xp-accent': accent, '--xp-on': readableOn(accent) } as React.CSSProperties
+}
+
+type Connection = 'connecting' | 'live' | 'offline'
+
+// ── Styles (scoped by the xp- prefix; accent comes from CSS variables) ─────
+
+const STYLES = `
+.xp-scope{--xp-line:color-mix(in srgb,currentColor 14%,transparent);--xp-tint:color-mix(in srgb,var(--xp-accent) 8%,transparent)}
+
+/* progress */
+.xp-progress{display:flex;gap:4px;margin-top:20px}
+.xp-seg{flex:1;height:6px;border-radius:3px;background:var(--xp-line);transition:background .4s ease}
+.xp-seg.on{background:var(--xp-accent)}
+.xp-count{margin:8px 0 0;font-size:13px;color:var(--muted)}
+.xp-muted{font-size:13px;color:var(--muted)}
+
+/* cards */
+.xp-card{margin-top:24px;padding:20px;border:1px solid var(--xp-line);border-radius:14px;background:var(--xp-tint)}
+.xp-card--active{border-color:var(--xp-accent)}
+.xp-label{margin:0 0 8px;font-size:13px;color:var(--muted)}
+.xp-clue{margin:0 0 16px;padding:0 0 0 14px;border-left:3px solid var(--xp-accent);font-size:16px;line-height:1.55;font-style:italic;color:var(--ink)}
+.xp-steps{margin:0 0 18px;padding-left:20px;display:grid;gap:6px;font-size:13px;line-height:1.5;color:var(--ink-light)}
+.xp-actions{display:grid;gap:8px}
+.xp-title{margin:0 0 4px;font-size:16px;font-weight:600;color:var(--ink)}
+
+/* buttons */
+.xp-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;border-radius:10px;border:1px solid transparent;font:inherit;font-size:14px;font-weight:600;text-decoration:none;cursor:pointer;transition:filter .15s,background .15s}
+.xp-btn--solid{background:var(--xp-accent);color:var(--xp-on)}
+.xp-btn--solid:hover{filter:brightness(.94)}
+.xp-btn--ghost{background:transparent;border-color:var(--xp-line);color:var(--ink)}
+.xp-btn--ghost:hover{background:var(--xp-tint)}
+.xp-btn:focus-visible,.xp-marker:focus-visible,.xp-trail-item:focus-visible{outline:2px solid var(--xp-accent);outline-offset:2px}
+
+/* live status */
+.xp-status{display:flex;align-items:center;gap:8px;margin:14px 0 0;font-size:13px;color:var(--muted)}
+.xp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;background:#9ca3af}
+.xp-dot--live{background:#22a559;animation:xp-blink 1.8s ease-in-out infinite}
+.xp-dot--offline{background:#d97706}
+
+/* alert */
+.xp-alert{display:flex;align-items:center;gap:10px;margin-top:20px;padding:12px 14px;border-radius:10px;border:1px solid #d9770655;background:#d9770614;font-size:13px;color:var(--ink)}
+.xp-alert button{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:none;border:0;font:inherit;font-weight:600;color:inherit;cursor:pointer;text-decoration:underline}
+
+/* scan feedback */
+.xp-scanned{display:flex;align-items:center;gap:14px}
+.xp-scanned-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--xp-accent);color:var(--xp-on);animation:xp-pop .35s ease-out}
+
+/* chapter trail */
+.xp-trail-wrap{margin-top:28px}
+.xp-trail-title{margin:0 0 8px;font-size:15px;font-weight:600;color:var(--ink)}
+.xp-trail{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.xp-trail-item{display:flex;align-items:center;gap:12px;width:100%;padding:10px;border:0;border-radius:10px;background:transparent;font:inherit;text-align:left;color:var(--ink)}
+button.xp-trail-item{cursor:pointer}
+button.xp-trail-item:hover{background:var(--xp-tint)}
+.xp-trail-item--locked{color:var(--muted)}
+.xp-trail-text{display:grid;flex:1;min-width:0}
+.xp-trail-main{font-size:14px;font-weight:500}
+.xp-mark{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;flex-shrink:0;font-size:12px;font-weight:700;border:1.5px solid var(--xp-line);color:var(--muted)}
+.xp-mark--done{background:var(--xp-accent);border-color:var(--xp-accent);color:var(--xp-on)}
+.xp-mark--current{border-color:var(--xp-accent);color:var(--ink);box-shadow:0 0 0 3px var(--xp-tint)}
+
+/* completion */
+.xp-complete{display:grid;gap:12px}
+.xp-complete-head{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:600;color:var(--ink)}
+
+/* portrait markers */
+.xp-marker{position:absolute;transform:translate(-50%,-50%);z-index:5;display:grid;place-items:center;width:40px;height:40px;padding:0;border-radius:50%;border:2px solid var(--xp-accent);background:#fff;color:#14181c;font:inherit;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.28);transition:scale .15s ease,background .2s}
+.xp-marker:hover{scale:1.1}
+.xp-marker--sm{width:28px;height:28px;font-size:11px}
+.xp-marker.is-done{background:var(--xp-accent);color:var(--xp-on);border-color:#fff}
+.xp-marker.is-active{scale:1.2;z-index:10}
+.xp-marker.is-current{width:46px;height:46px;z-index:10;background:var(--xp-accent);color:var(--xp-on);border:3px solid #fff}
+.xp-marker.is-current::before{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--xp-accent);animation:xp-ring 2s ease-out infinite;pointer-events:none}
+.xp-marker.is-scanned::before{animation:none;opacity:0}
+.xp-hint{margin:16px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+
+/* QR modal */
+.xp-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;background:rgba(8,10,12,.82);backdrop-filter:blur(6px)}
+.xp-qr-card{display:grid;gap:14px;justify-items:center;width:min(340px,100%);padding:24px;border-radius:20px;background:#fff;color:#14181c;text-align:center;animation:xp-pop .25s ease-out}
+.xp-qr-frame{padding:12px;border-radius:16px;border:3px solid var(--xp-accent);background:#fff}
+.xp-qr-card .xp-status{margin:0;color:#4b5563}
+.xp-qr-card .xp-btn{width:100%}
+
+/* organizer next-target card */
+.xp-qr-side{display:grid;gap:12px;justify-items:center;text-align:center}
+
+@keyframes xp-ring{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+@keyframes xp-blink{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes xp-pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  .xp-dot--live,.xp-marker.is-current::before,.xp-scanned-icon,.xp-qr-card{animation:none}
+  .xp-marker,.xp-seg{transition:none}
+}
+`
+
+// ── Small shared pieces ────────────────────────────────────────────────────
+
+function ProgressSegments({ total, count, label }: { total: number; count: number; label: string }) {
+  return (
+    <>
+      <div className="xp-progress" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={total} aria-valuenow={count}>
+        {Array.from({ length: total }).map((_, i) => (
+          <span key={i} className={`xp-seg${i < count ? ' on' : ''}`} />
+        ))}
+      </div>
+      <p className="xp-count">
+        {count} of {total} {label}
+      </p>
+    </>
+  )
+}
+
+function LiveStatus({ connection }: { connection: Connection }) {
+  const text =
+    connection === 'live'
+      ? 'Waiting for your scan'
+      : connection === 'offline'
+        ? 'Connection lost. Reconnecting…'
+        : 'Connecting…'
+  return (
+    <p className="xp-status">
+      <span className={`xp-dot xp-dot--${connection}`} aria-hidden="true" />
+      {text}
+    </p>
+  )
+}
 
 // ── Story Panel ────────────────────────────────────────────────────────────
 
@@ -22,36 +176,76 @@ interface StoryPanelProps {
   hotspot: Hotspot
   story: Story | undefined
   onClose: () => void
-  onPrev: () => void
-  onNext: () => void
-  hasPrev: boolean
-  hasNext: boolean
-  accentColor: string
+  /** Browse mode: previous / next chapter buttons */
+  nav?: { onPrev: () => void; onNext: () => void; hasPrev: boolean; hasNext: boolean }
+  /** Reveal mode: a single primary action replaces prev / next */
+  action?: { label: string; onClick: () => void }
 }
 
-function StoryPanel({ monument, hotspot, story, onClose, onPrev, onNext, hasPrev, hasNext, accentColor }: StoryPanelProps) {
+function StoryPanel({ monument, hotspot, story, onClose, nav, action }: StoryPanelProps) {
+  const panelRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef<HTMLButtonElement>(null)
+
+  // Lock page scroll, move focus into the dialog, restore it on close
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+    return () => {
+      document.body.style.overflow = prevOverflow
+      previous?.focus?.()
+    }
+  }, [])
+
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowLeft' && hasPrev) onPrev()
-      if (e.key === 'ArrowRight' && hasNext) onNext()
+      if (nav && e.key === 'ArrowLeft' && nav.hasPrev) nav.onPrev()
+      if (nav && e.key === 'ArrowRight' && nav.hasNext) nav.onNext()
+      if (e.key === 'Tab' && panelRef.current) {
+        const f = panelRef.current.querySelectorAll<HTMLElement>('a[href],button:not([disabled])')
+        if (!f.length) return
+        const first = f[0]
+        const last = f[f.length - 1]
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
-  }, [onClose, onPrev, onNext, hasPrev, hasNext])
+  }, [onClose, nav])
 
   return (
-    <div className="story-overlay" role="dialog" aria-modal="true" aria-label={`Story: ${hotspot.label}`} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="story-panel">
+    <div
+      className="story-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Story: ${hotspot.label}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="story-panel" ref={panelRef}>
         <div className="story-panel-header">
-          <span className="story-chapter-label" style={{ color: accentColor }}>{hotspot.chapter}</span>
-          <button className="story-close" onClick={onClose} aria-label="Close story"><X size={20} /></button>
+          <span className="story-chapter-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--xp-accent)' }} />
+            {hotspot.chapter}
+          </span>
+          <button ref={closeRef} className="story-close" onClick={onClose} aria-label="Close story">
+            <X size={20} />
+          </button>
         </div>
 
         <div className="story-panel-body">
           <p className="story-metaphor">{hotspot.metaphor}</p>
           <h2 className="story-title">{story?.headline || hotspot.label}</h2>
-          <p className="story-date">{story?.dateLabel}</p>
+          {story?.dateLabel && <p className="story-date">{story.dateLabel}</p>}
 
           <div className="story-body">
             {(story?.body || 'Story content — editorial review required.').split('\n\n').map((para, i) => (
@@ -83,22 +277,85 @@ function StoryPanel({ monument, hotspot, story, onClose, onPrev, onNext, hasPrev
         </div>
 
         <div className="story-panel-footer">
-          <button className="story-nav-btn" onClick={onPrev} disabled={!hasPrev} aria-label="Previous chapter">
-            <ChevronLeft size={18} /> Prev
-          </button>
-          <span className="story-progress-label">
-            {hotspot.displayOrder} / {monument.hotspots.length}
-          </span>
-          <button className="story-nav-btn" onClick={onNext} disabled={!hasNext} aria-label="Next chapter">
-            Next <ChevronRight size={18} />
-          </button>
+          {action ? (
+            <>
+              <span className="story-progress-label">
+                {hotspot.displayOrder} / {monument.hotspots.length}
+              </span>
+              <button className="xp-btn xp-btn--solid" onClick={action.onClick}>
+                {action.label} <ArrowRight size={16} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="story-nav-btn" onClick={nav?.onPrev} disabled={!nav?.hasPrev} aria-label="Previous chapter">
+                <ChevronLeft size={18} /> Prev
+              </button>
+              <span className="story-progress-label">
+                {hotspot.displayOrder} / {monument.hotspots.length}
+              </span>
+              <button className="story-nav-btn" onClick={nav?.onNext} disabled={!nav?.hasNext} aria-label="Next chapter">
+                Next <ChevronRight size={18} />
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
   )
 }
 
-// ── Participant AR Scanning Flow (Two-Device Experience) ──────────────────
+// ── QR modal (participant) ─────────────────────────────────────────────────
+
+function QRModal({
+  monument,
+  hotspot,
+  connection,
+  onClose,
+}: {
+  monument: Monument
+  hotspot: Hotspot
+  connection: Connection
+  onClose: () => void
+}) {
+  const closeRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    closeRef.current?.focus()
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      previous?.focus?.()
+    }
+  }, [onClose])
+
+  return (
+    <div className="xp-modal" role="dialog" aria-modal="true" aria-label="QR code to scan" onClick={onClose}>
+      <div className="xp-qr-card" onClick={(e) => e.stopPropagation()}>
+        <div className="xp-qr-frame">
+          {/* Dark modules on white keep the code reliably scannable on any accent */}
+          <HotspotQRCode slug={monument.slug} hotspotId={hotspot.id} size={208} bgColor="#ffffff" fgColor="#101418" />
+        </div>
+        <div>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Scan with your phone</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#4b5563' }}>
+            Open your camera and point it at the code. The story opens on this screen.
+          </p>
+        </div>
+        <LiveStatus connection={connection} />
+        <button ref={closeRef} className="xp-btn xp-btn--ghost" style={{ color: '#14181c' }} onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Participant flow ───────────────────────────────────────────────────────
 
 interface ParticipantExploreProps {
   monument: Monument
@@ -108,132 +365,118 @@ interface ParticipantExploreProps {
 
 function ParticipantExplore({ monument, accentColor, justUnlockedId }: ParticipantExploreProps) {
   const router = useRouter()
-  const [currentHotspotIndex, setCurrentHotspotIndex] = useState(0)
-  const [scannedHotspots, setScannedHotspots] = useState<Set<number>>(new Set())
-  const [showTopic, setShowTopic] = useState(false)
-  const [scanDetected, setScanDetected] = useState(false)
+  const sortedHotspots = useMemo(
+    () => [...monument.hotspots].sort((a, b) => a.displayOrder - b.displayOrder),
+    [monument.hotspots]
+  )
+  const total = sortedHotspots.length
+
+  const [found, setFound] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [connection, setConnection] = useState<Connection>('connecting')
+  const [scanDetectedId, setScanDetectedId] = useState<string | null>(null)
+  const [story, setStory] = useState<{ id: string; mode: 'reveal' | 'review' } | null>(null)
   const [showQR, setShowQR] = useState(false)
-  const sortedHotspots = [...monument.hotspots].sort((a, b) => a.displayOrder - b.displayOrder)
-  const currentHotspot = sortedHotspots[currentHotspotIndex]
-  const allScanned = scannedHotspots.size === sortedHotspots.length
 
-  // Stable hotspot IDs array — avoids re-running the effect on every render
-  // (sortedHotspots is re-created each render but its contents don't change)
-  const hotspotIds = sortedHotspots.map(h => h.id).join(',')
+  const foundRef = useRef(found)
+  foundRef.current = found
+  const timersRef = useRef<number[]>([])
+  const reloadRef = useRef<() => void>(() => {})
+  const justUnlockedRef = useRef(justUnlockedId)
 
-  // Load progress from database and set up WebSocket
+  // Derived state: the clue to chase is always the first chapter not yet found.
+  const nextHotspot = sortedHotspots.find((h) => !found.has(h.id))
+  const scanDetectedHotspot = scanDetectedId ? sortedHotspots.find((h) => h.id === scanDetectedId) : undefined
+  const focusHotspot = scanDetectedHotspot ?? nextHotspot
+  const allFound = !focusHotspot
+
+  // Load progress from the database and listen for live scans
   useEffect(() => {
     const player = getClientSession()
-    if (!player) return
+    if (!player) {
+      setLoading(false)
+      return
+    }
 
     let isMounted = true
     let ws: ReturnType<typeof getWebSocketClient> | null = null
     let removeReconnectCb: (() => void) | null = null
+    const validIds = new Set(sortedHotspots.map((h) => h.id))
 
-    // Re-usable: fetch latest progress from DB and reconcile local state
     async function loadProgress(showSpinner = true) {
       if (showSpinner && isMounted) setLoading(true)
       try {
         const res = await fetch(`/api/progress?monumentSlug=${monument.slug}`, { cache: 'no-store' })
-        if (!res.ok || !isMounted) return
-
+        if (!res.ok) throw new Error(`Progress request failed (${res.status})`)
         const { progress } = await res.json()
-        const scannedIds = new Set<string>(
-          (progress as Array<{ hotspot_id: string }>).map(p => p.hotspot_id)
-        )
-
-        // Mirror to localStorage
-        scannedIds.forEach(id => markHotspotExplored(monument.slug, id))
-
-        const savedIndices = new Set<number>()
-        sortedHotspots.forEach((hotspot, index) => {
-          if (scannedIds.has(hotspot.id)) savedIndices.add(index)
-        })
-
         if (!isMounted) return
-        setScannedHotspots(savedIndices)
 
-        if (savedIndices.size > 0) {
-          const nextUnscanned = sortedHotspots.findIndex((_, i) => !savedIndices.has(i))
-          const nextIndex = nextUnscanned !== -1 ? nextUnscanned : sortedHotspots.length - 1
-          setCurrentHotspotIndex(nextIndex)
-
-          // If we just scanned a hotspot (arrived from scanner page), show its story
-          if (justUnlockedId) {
-            const justUnlockedIndex = sortedHotspots.findIndex(h => h.id === justUnlockedId)
-            if (justUnlockedIndex !== -1 && savedIndices.has(justUnlockedIndex)) {
-              setCurrentHotspotIndex(justUnlockedIndex)
-              setShowTopic(true)
-            }
+        const ids = new Set<string>()
+        for (const p of progress as Array<{ hotspot_id: string }>) {
+          if (validIds.has(p.hotspot_id)) {
+            ids.add(p.hotspot_id)
+            markHotspotExplored(monument.slug, p.hotspot_id) // mirror to localStorage
           }
+        }
+        setFound(ids)
+        setLoadError(false)
+
+        // Arrived from the scanner page: show the story that was just unlocked
+        const unlockId = justUnlockedRef.current
+        if (unlockId && ids.has(unlockId)) {
+          justUnlockedRef.current = undefined
+          setStory({ id: unlockId, mode: 'reveal' })
+          // Drop ?unlocked= so a refresh doesn't replay the reveal
+          router.replace(`/monuments/${monument.slug}/explore`, { scroll: false })
         }
       } catch (err) {
         console.error('[Explore] Failed to load progress:', err)
+        if (isMounted && showSpinner) setLoadError(true)
       } finally {
         if (isMounted && showSpinner) setLoading(false)
       }
     }
+    reloadRef.current = () => loadProgress(true)
 
     async function setupWebSocket() {
       if (!player) return
-
       try {
         ws = getWebSocketClient(player.id, player.displayName)
         await ws.connect()
         if (!isMounted) return
+        setConnection('live')
 
         ws.joinMonument(monument.slug)
 
-        // On reconnect: re-fetch so we don't miss events that arrived while offline
+        // On reconnect: re-fetch so we don't miss scans that happened while offline
         removeReconnectCb = ws.onReconnectFetch(() => {
           if (isMounted) loadProgress(false)
         })
 
-        const handleHotspotUnlocked = (data: { monumentSlug: string; hotspotId: string }) => {
+        ws.onHotspotUnlocked((data: { monumentSlug: string; hotspotId: string }) => {
           if (!isMounted || data.monumentSlug !== monument.slug) return
-          console.log('[Explore] hotspot:unlocked', data.hotspotId)
+          const hotspot = sortedHotspots.find((h) => h.id === data.hotspotId)
+          if (!hotspot || foundRef.current.has(hotspot.id)) return
 
-          const hotspotIndex = sortedHotspots.findIndex(h => h.id === data.hotspotId)
-          if (hotspotIndex === -1) return
+          markHotspotExplored(monument.slug, hotspot.id)
+          setFound((prev) => new Set(prev).add(hotspot.id))
+          setShowQR(false)
+          setScanDetectedId(hotspot.id)
 
-          // Mirror to localStorage
-          markHotspotExplored(monument.slug, data.hotspotId)
-
-          setScannedHotspots(prev => {
-            if (prev.has(hotspotIndex)) return prev // already tracked
-            const next = new Set(prev)
-            next.add(hotspotIndex)
-            return next
-          })
-
-          setCurrentHotspotIndex(current => {
-            if (hotspotIndex === current && isMounted) {
-              setScanDetected(true)
-              setTimeout(() => {
-                if (isMounted) {
-                  setShowTopic(true)
-                  setScanDetected(false)
-                }
-              }, 1500)
-            }
-            return current
-          })
-        }
-
-        const handleConnect = () => {
-          if (isMounted) console.log('[Explore] WS connected')
-        }
-        const handleDisconnect = () => {
-          if (isMounted) console.log('[Explore] WS disconnected')
-        }
-
-        ws.onHotspotUnlocked(handleHotspotUnlocked)
-        ws.onConnect(handleConnect)
-        ws.onDisconnect(handleDisconnect)
-
+          // Short beat so the person sees the scan register before the story opens
+          const t = window.setTimeout(() => {
+            if (!isMounted) return
+            setScanDetectedId(null)
+            setStory({ id: hotspot.id, mode: 'reveal' })
+          }, 1200)
+          timersRef.current.push(t)
+        })
+        ws.onConnect(() => isMounted && setConnection('live'))
+        ws.onDisconnect(() => isMounted && setConnection('offline'))
       } catch (err) {
         console.error('[Explore] WebSocket setup failed:', err)
+        if (isMounted) setConnection('offline')
       }
     }
 
@@ -242,7 +485,9 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
 
     return () => {
       isMounted = false
-      if (removeReconnectCb) removeReconnectCb()
+      timersRef.current.forEach((t) => window.clearTimeout(t))
+      timersRef.current = []
+      removeReconnectCb?.()
       if (ws) {
         ws.off('hotspot:unlocked')
         ws.off('connect')
@@ -250,474 +495,275 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
         // Do NOT disconnect the socket — other pages share the singleton
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monument.slug, hotspotIds])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monument.slug, sortedHotspots])
 
-  function handleNext() {
-    setShowTopic(false)
-    if (currentHotspotIndex < sortedHotspots.length - 1) {
-      setCurrentHotspotIndex(currentHotspotIndex + 1)
-    }
+  const discovered = sortedHotspots.filter((h) => found.has(h.id))
+  const storyHotspot = story ? sortedHotspots.find((h) => h.id === story.id) : undefined
+  const storyIdx = storyHotspot ? discovered.findIndex((h) => h.id === storyHotspot.id) : -1
+
+  function closeStory() {
+    setStory(null)
   }
-
-  function handleStartChallenge() {
-    router.push(`/challenge/${monument.slug}/instructions`)
+  function stepStory(dir: -1 | 1) {
+    const target = discovered[storyIdx + dir]
+    if (target) setStory({ id: target.id, mode: 'review' })
   }
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
-        <span className="spinner spinner--lg" aria-label="Loading progress…" />
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', alignContent: 'center', gap: 12 }}>
+        <span className="spinner spinner--lg" aria-hidden="true" />
+        <p className="xp-muted" role="status">Loading your progress…</p>
       </div>
     )
   }
 
-  const story = monument.stories.find((s) => s.hotspotId === currentHotspot?.id)
-
   return (
-    <main className={`explore-page explore-page--full ${monument.accent}`}>
+    <main className={`explore-page explore-page--full xp-scope ${monument.accent}`} style={scopeStyle(accentColor)}>
+      <style>{STYLES}</style>
+
       <SiteHeader
         className="detail-header explore-fixed-header"
-        left={<Link href={`/monuments/${monument.slug}`} className="text-link"><ArrowLeft size={16} /> Back</Link>}
-        right={<span style={{ fontSize: 13, color: 'var(--muted)' }}>{scannedHotspots.size} / {sortedHotspots.length}</span>}
+        left={
+          <Link href={`/monuments/${monument.slug}`} className="text-link">
+            <ArrowLeft size={16} /> Back
+          </Link>
+        }
+        right={
+          <span style={{ fontSize: 13, color: 'var(--muted)' }}>
+            {found.size} / {total}
+          </span>
+        }
       />
 
       <div className="explorer-layout">
-        {/* Left sidebar - minimal, mysterious */}
         <aside className="explorer-sidebar">
           <div className="explorer-sidebar-inner">
-            <p className="eyebrow" style={{ color: accentColor }}>
+            <p className="eyebrow" style={{ color: 'var(--ink)' }}>
               <span className="eyebrow-line" style={{ background: accentColor }} />
               {monument.subject}
             </p>
             <h1 className="explorer-title">{monument.name}</h1>
 
-            {/* Progress bar - subtle */}
-            <div className="explorer-progress-bar-wrap">
-              <div className="explorer-progress-bar">
-                <div
-                  className="explorer-progress-fill"
-                  style={{
-                    width: `${(scannedHotspots.size / sortedHotspots.length) * 100}%`,
-                    background: accentColor,
-                  }}
-                />
-              </div>
-              <span className="explorer-progress-label">
-                {scannedHotspots.size} of {sortedHotspots.length} discovered
-              </span>
-            </div>
+            <ProgressSegments total={total} count={found.size} label="chapters found" />
 
-            {!allScanned ? (
-              <>
-                {/* Mysterious current hotspot hint */}
-                {!showTopic && !scanDetected && (
-                  <div style={{ 
-                    padding: '24px', 
-                    background: `${accentColor}05`, 
-                    borderRadius: '12px', 
-                    marginBottom: '20px',
-                    border: `1px solid ${accentColor}20`
-                  }}>
-                    <p style={{ fontSize: '13px', color: 'var(--ink-light)', fontStyle: 'italic', lineHeight: 1.6 }}>
-                      "{currentHotspot.metaphor}"
-                    </p>
-                    <p style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '12px' }}>
-                      Seek the glowing marker...
-                    </p>
-                  </div>
-                )}
-
-                {/* Scanning in progress */}
-                {scanDetected && (
-                  <div style={{ 
-                    padding: '24px', 
-                    background: `${accentColor}10`, 
-                    borderRadius: '12px', 
-                    marginBottom: '20px',
-                    border: `2px solid ${accentColor}`,
-                    textAlign: 'center'
-                  }}>
-                    <div style={{ 
-                      width: '60px', 
-                      height: '60px', 
-                      margin: '0 auto 16px',
-                      borderRadius: '50%',
-                      border: `3px solid ${accentColor}`,
-                      borderTopColor: 'transparent',
-                      animation: 'spin 1s linear infinite'
-                    }} />
-                    <p style={{ fontSize: '14px', fontWeight: 500, color: accentColor }}>
-                      Scanning...
-                    </p>
-                  </div>
-                )}
-
-                {/* Topic revealed */}
-                {showTopic && (
-                  <div style={{ 
-                    padding: '24px', 
-                    background: `${accentColor}10`, 
-                    borderRadius: '12px', 
-                    marginBottom: '20px',
-                    border: `2px solid ${accentColor}30`
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                      <CheckCircle2 size={20} style={{ color: accentColor }} />
-                      <h4 style={{ fontSize: '16px', fontWeight: 600, color: accentColor }}>
-                        {currentHotspot.chapter}
-                      </h4>
-                    </div>
-                    
-                    <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '12px' }}>
-                      {currentHotspot.label}
-                    </h3>
-                    
-                    <div style={{ 
-                      fontSize: '14px', 
-                      lineHeight: 1.7, 
-                      color: 'var(--ink)',
-                      marginBottom: '16px'
-                    }}>
-                      {story?.body ? story.body.split('\n\n').map((para, i) => (
-                        <p key={i} style={{ marginBottom: '12px' }}>{para}</p>
-                      )) : <p>The story of {currentHotspot.label} unfolds here...</p>}
-                    </div>
-                    
-                    <button 
-                      className="button"
-                      style={{ background: accentColor, color: '#fff', width: '100%' }}
-                      onClick={handleNext}
-                    >
-                      {currentHotspotIndex < sortedHotspots.length - 1 ? 'Continue Journey →' : 'Complete Quest'}
-                    </button>
-                  </div>
-                )}
-
-                {/* Discovered chapters list */}
-                <div style={{ marginTop: '24px' }}>
-                  <h4 style={{ fontSize: '13px', fontWeight: 600, marginBottom: '12px', color: 'var(--muted)' }}>
-                    DISCOVERED
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {sortedHotspots.map((hotspot, i) => {
-                      const discovered = scannedHotspots.has(i)
-                      const active = i === currentHotspotIndex
-                      
-                      if (!discovered && !active) return null // Hide undiscovered
-                      
-                      return (
-                        <div
-                          key={hotspot.id}
-                          style={{
-                            padding: '10px 12px',
-                            background: discovered ? `${accentColor}08` : 'transparent',
-                            borderRadius: '6px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            border: active ? `1px solid ${accentColor}40` : '1px solid transparent',
-                            opacity: discovered ? 1 : 0.5
-                          }}
-                        >
-                          {discovered ? (
-                            <CheckCircle2 size={16} style={{ color: accentColor, flexShrink: 0 }} />
-                          ) : (
-                            <div style={{ 
-                              width: '16px', 
-                              height: '16px', 
-                              borderRadius: '50%', 
-                              border: `2px solid ${accentColor}`, 
-                              flexShrink: 0 
-                            }} />
-                          )}
-                          <span style={{ fontSize: '13px', fontWeight: discovered ? 500 : 400 }}>
-                            {hotspot.label}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="explorer-unlock">
-                <div className="explorer-unlock-badge" style={{ borderColor: accentColor, color: accentColor }}>
-                  <CheckCircle2 size={18} /> Quest Complete
-                </div>
-                <p style={{ fontSize: '14px', color: 'var(--ink-light)', marginTop: '12px', marginBottom: '20px' }}>
-                  You've uncovered all secrets. The final challenge awaits...
-                </p>
-                <button
-                  onClick={handleStartChallenge}
-                  className="button button-dark explorer-challenge-btn"
-                >
-                  Accept the Challenge <ArrowRight size={16} />
+            {loadError && (
+              <div className="xp-alert" role="alert">
+                <AlertCircle size={16} />
+                <span>Couldn&apos;t load your progress.</span>
+                <button type="button" onClick={() => reloadRef.current()}>
+                  <RefreshCw size={13} /> Retry
                 </button>
               </div>
             )}
+
+            {allFound ? (
+              <section className="xp-card xp-card--active xp-complete" aria-live="polite">
+                <p className="xp-complete-head">
+                  <CheckCircle2 size={22} style={{ flexShrink: 0 }} /> All chapters found
+                </p>
+                <p className="xp-muted" style={{ margin: 0, lineHeight: 1.6 }}>
+                  You&apos;ve unlocked every chapter of {monument.name}. Reread any of them below, or start the
+                  challenge when you&apos;re ready.
+                </p>
+                <button
+                  type="button"
+                  className="xp-btn xp-btn--solid"
+                  onClick={() => router.push(`/challenge/${monument.slug}/instructions`)}
+                >
+                  Start the challenge <ArrowRight size={16} />
+                </button>
+              </section>
+            ) : (
+              <section className="xp-card xp-card--active" aria-live="polite">
+                {scanDetectedHotspot ? (
+                  <div className="xp-scanned">
+                    <span className="xp-scanned-icon" aria-hidden="true">
+                      <Check size={20} />
+                    </span>
+                    <div>
+                      <p className="xp-title">Marker scanned</p>
+                      <p className="xp-muted" style={{ margin: 0 }}>Opening {scanDetectedHotspot.chapter}…</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="xp-label">
+                      Clue {focusHotspot!.displayOrder} of {total}
+                    </p>
+                    <blockquote className="xp-clue">{focusHotspot!.metaphor}</blockquote>
+                    <ol className="xp-steps">
+                      <li>Find the pulsing marker on the portrait.</li>
+                      <li>Show its QR code and scan it with your phone.</li>
+                      <li>The story opens here automatically.</li>
+                    </ol>
+                    <div className="xp-actions">
+                      <button type="button" className="xp-btn xp-btn--solid" onClick={() => setShowQR(true)}>
+                        <QrCode size={18} /> Show QR code
+                      </button>
+                      <Link href={`/monuments/${monument.slug}/scanner`} className="xp-btn xp-btn--ghost">
+                        <Camera size={18} /> Scan with this device
+                      </Link>
+                    </div>
+                    <LiveStatus connection={connection} />
+                  </>
+                )}
+              </section>
+            )}
+
+            <div className="xp-trail-wrap">
+              <h2 className="xp-trail-title">Chapters</h2>
+              <ul className="xp-trail">
+                {sortedHotspots.map((h) => {
+                  const done = found.has(h.id)
+                  const current = h.id === focusHotspot?.id
+                  if (done) {
+                    return (
+                      <li key={h.id}>
+                        <button
+                          type="button"
+                          className="xp-trail-item"
+                          onClick={() => setStory({ id: h.id, mode: 'review' })}
+                          aria-label={`Read ${h.chapter}: ${h.label}`}
+                        >
+                          <span className="xp-mark xp-mark--done"><Check size={14} /></span>
+                          <span className="xp-trail-text">
+                            <span className="xp-trail-main">{h.label}</span>
+                            <span className="xp-muted">{h.chapter}</span>
+                          </span>
+                          <ChevronRight size={16} style={{ color: 'var(--muted)' }} aria-hidden="true" />
+                        </button>
+                      </li>
+                    )
+                  }
+                  return (
+                    <li key={h.id}>
+                      <div className={`xp-trail-item ${current ? '' : 'xp-trail-item--locked'}`}>
+                        <span className={`xp-mark${current ? ' xp-mark--current' : ''}`}>
+                          {current ? h.displayOrder : <Lock size={12} />}
+                        </span>
+                        <span className="xp-trail-text">
+                          <span className="xp-trail-main">Chapter {h.displayOrder}</span>
+                          <span className="xp-muted">{current ? 'Find this one next' : 'Not found yet'}</span>
+                        </span>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
           </div>
         </aside>
 
-        {/* Right: Portrait with mysterious pulsating hotspot */}
         <div className="explorer-portrait-wrap">
           <div className="explorer-portrait-container">
-            <div
-              className="explorer-portrait-bg"
-              aria-label={`${monument.subject} portrait`}
-            >
-              {/* Portrait image */}
-              {monument.slug === 'tinubu' ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src="/tinubu.png"
-                  alt="Discover the mysteries"
-                  className="portrait-image"
-                  draggable={false}
-                  style={{ filter: !allScanned ? 'brightness(0.95)' : 'brightness(1)' }}
-                />
-              ) : monument.slug === 'sanwo-olu' ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src="/sanwo-olu.png"
-                  alt="Discover the mysteries"
-                  className="portrait-image"
-                  draggable={false}
-                  style={{ filter: !allScanned ? 'brightness(0.95)' : 'brightness(1)' }}
-                />
-              ) : (
-                <div className="portrait-silhouette" style={{ background: monument.accent === 'green' ? '#d6ead9' : '#d5eaf5' }}>
-                  <div className="silhouette-figure" style={{ background: accentColor }} />
-                </div>
-              )}
+            <div className="explorer-portrait-bg" aria-label={`${monument.subject} portrait`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={monument.image}
+                alt={monument.subject}
+                className="portrait-image"
+                draggable={false}
+                style={{ objectFit: monument.portraitFit ?? 'cover' }}
+              />
 
-              {/* ONLY current pulsating hotspot — small dot, tap to show scannable QR */}
-              {!allScanned && !showTopic && (
-                <div
-                  role="button"
-                  aria-label={`Tap to show QR code for ${currentHotspot.label}`}
+              {/* Found chapters: small markers you can tap to reread */}
+              {discovered
+                .filter((h) => h.id !== focusHotspot?.id)
+                .map((h) => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    className="xp-marker xp-marker--sm is-done"
+                    style={{ left: `${h.x}%`, top: `${h.y}%` }}
+                    onClick={() => setStory({ id: h.id, mode: 'review' })}
+                    aria-label={`Reread ${h.chapter}: ${h.label}`}
+                    title={h.label}
+                  >
+                    <Check size={14} />
+                  </button>
+                ))}
+
+              {/* The one marker to find */}
+              {focusHotspot && (
+                <button
+                  type="button"
+                  className={`xp-marker is-current${scanDetectedHotspot ? ' is-scanned' : ''}`}
+                  style={{ left: `${focusHotspot.x}%`, top: `${focusHotspot.y}%` }}
                   onClick={() => setShowQR(true)}
-                  style={{
-                    position: 'absolute',
-                    left: `${currentHotspot.x}%`,
-                    top: `${currentHotspot.y}%`,
-                    transform: 'translate(-50%, -50%)',
-                    zIndex: 10,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '50%',
-                    background: scanDetected ? `${accentColor}dd` : accentColor,
-                    border: `2px solid #fff`,
-                    boxShadow: scanDetected
-                      ? 'none'
-                      : `0 0 0 5px ${accentColor}44, 0 0 18px ${accentColor}88`,
-                    animation: scanDetected ? 'none' : 'pulse-hotspot 2s infinite',
-                    transition: 'all 0.3s ease',
-                    color: '#fff',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                  }}
-                  data-ar-marker={`hotspot-${currentHotspot.id}`}
+                  aria-label={`Show QR code for clue ${focusHotspot.displayOrder}`}
+                  data-ar-marker={`hotspot-${focusHotspot.id}`}
                 >
-                  {scanDetected ? <Scan size={16} /> : currentHotspot.displayOrder}
-                </div>
+                  {scanDetectedHotspot ? <Check size={20} /> : focusHotspot.displayOrder}
+                </button>
               )}
-
-              {/* Full-screen QR overlay — shown when user taps the hotspot */}
-              {showQR && !allScanned && !showTopic && (
-                <div
-                  style={{
-                    position: 'fixed',
-                    inset: 0,
-                    zIndex: 1000,
-                    background: 'rgba(0,0,0,0.92)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '32px',
-                  }}
-                  onClick={() => setShowQR(false)}
-                >
-                  <div
-                    style={{
-                      background: '#fff',
-                      borderRadius: '20px',
-                      padding: '24px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '16px',
-                      maxWidth: '300px',
-                      width: '100%',
-                    }}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {/* Pulsing ring around QR */}
-                    <div style={{
-                      borderRadius: '16px',
-                      border: `3px solid ${accentColor}`,
-                      padding: '8px',
-                      boxShadow: `0 0 0 6px ${accentColor}22, 0 0 30px ${accentColor}44`,
-                      animation: 'pulse-ring 2s infinite',
-                    }}>
-                      <HotspotQRCode
-                        slug={monument.slug}
-                        hotspotId={currentHotspot.id}
-                        size={200}
-                        bgColor="#ffffff"
-                        fgColor={accentColor}
-                      />
-                    </div>
-                    <p style={{ fontSize: '13px', fontWeight: 600, color: accentColor, textAlign: 'center' }}>
-                      {currentHotspot.chapter}: {currentHotspot.label}
-                    </p>
-                    <p style={{ fontSize: '12px', color: '#666', textAlign: 'center' }}>
-                      Have the participant scan this QR code
-                    </p>
-                    <button
-                      onClick={() => setShowQR(false)}
-                      style={{
-                        padding: '10px 24px',
-                        background: accentColor,
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '10px',
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        width: '100%',
-                      }}
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Discovered hotspots - faded */}
-              {sortedHotspots.map((hotspot, i) => {
-                const isDiscovered = scannedHotspots.has(i)
-                const isCurrent = i === currentHotspotIndex
-                
-                if (!isDiscovered || isCurrent) return null
-                
-                return (
-                  <div
-                    key={hotspot.id}
-                    className="hotspot-btn hotspot-explored"
-                    style={{
-                      left: `${hotspot.x}%`,
-                      top: `${hotspot.y}%`,
-                      borderColor: `${accentColor}60`,
-                      background: `${accentColor}30`,
-                      color: '#fff',
-                      pointerEvents: 'none',
-                      opacity: 0.4,
-                      fontSize: '10px'
-                    }}
-                  >
-                    ✓
-                  </div>
-                )
-              })}
             </div>
           </div>
 
-          {/* Subtle hint with scanner link */}
-          {!allScanned && !showTopic && (
-            <div style={{ 
-              padding: '16px', 
-              textAlign: 'center',
-              marginTop: '16px'
-            }}>
-              <p style={{ fontSize: '12px', color: 'var(--muted)', fontStyle: 'italic', marginBottom: '12px' }}>
-                Use your phone to scan the glowing marker...
-              </p>
-              <Link
-                href={`/monuments/${monument.slug}/scanner`}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '8px 16px',
-                  background: `${accentColor}15`,
-                  color: accentColor,
-                  borderRadius: '20px',
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  textDecoration: 'none',
-                  border: `1px solid ${accentColor}30`,
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = `${accentColor}25`}
-                onMouseLeave={(e) => e.currentTarget.style.background = `${accentColor}15`}
-              >
-                <Camera size={16} /> Open AR Scanner
-              </Link>
-            </div>
-          )}
+          {!allFound && <p className="xp-hint">Tap the pulsing marker to show its QR code.</p>}
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes pulse-hotspot {
-          0%, 100% { 
-            transform: translate(-50%, -50%) scale(1.2); 
-            box-shadow: 0 0 0 4px ${accentColor}33, 0 0 20px ${accentColor}66;
-          }
-          50% { 
-            transform: translate(-50%, -50%) scale(1.4); 
-            box-shadow: 0 0 0 8px ${accentColor}55, 0 0 30px ${accentColor}88;
-          }
-        }
-        @keyframes pulse-ring {
-          0%, 100% { box-shadow: 0 0 0 6px ${accentColor}22, 0 0 30px ${accentColor}44; }
-          50%       { box-shadow: 0 0 0 12px ${accentColor}33, 0 0 40px ${accentColor}66; }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+      {showQR && focusHotspot && !scanDetectedHotspot && (
+        <QRModal monument={monument} hotspot={focusHotspot} connection={connection} onClose={() => setShowQR(false)} />
+      )}
+
+      {story && storyHotspot && (
+        <StoryPanel
+          key={storyHotspot.id}
+          monument={monument}
+          hotspot={storyHotspot}
+          story={monument.stories.find((s) => s.hotspotId === storyHotspot.id)}
+          onClose={closeStory}
+          {...(story.mode === 'reveal'
+            ? { action: { label: nextHotspot ? 'Continue to next clue' : 'Finish', onClick: closeStory } }
+            : {
+                nav: {
+                  onPrev: () => stepStory(-1),
+                  onNext: () => stepStory(1),
+                  hasPrev: storyIdx > 0,
+                  hasNext: storyIdx >= 0 && storyIdx < discovered.length - 1,
+                },
+              })}
+        />
+      )}
     </main>
   )
 }
 
-// ── Organizer Explorer (original implementation) ───────────────────────────
+// ── Organizer explorer ─────────────────────────────────────────────────────
 
-interface OrganizerExploreProps {
-  monument: Monument
-}
-
-function OrganizerExplore({ monument }: OrganizerExploreProps) {
+function OrganizerExplore({ monument, accentColor }: { monument: Monument; accentColor: string }) {
   const [exploredIds, setExploredIds] = useState<string[]>([])
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null)
-  const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
   const isComplete = exploredIds.length >= monument.hotspots.length
 
-  // Organizer: start from localStorage for instant render, then reconcile with DB
+  // Start from localStorage for instant render, then reconcile with the DB
   useEffect(() => {
-    // Show locally cached data immediately
     const localIds = getExploredHotspots(monument.slug)
     setExploredIds(localIds)
 
-    // Reconcile with DB in the background (organizer may use different devices)
     fetch(`/api/progress?monumentSlug=${monument.slug}`, { cache: 'no-store' })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
         if (!data?.progress) return
         const dbIds: string[] = data.progress.map((p: { hotspot_id: string }) => p.hotspot_id)
-        // Merge: union of local + DB
         const merged = Array.from(new Set([...localIds, ...dbIds]))
-        merged.forEach(id => markHotspotExplored(monument.slug, id))
+        merged.forEach((id) => markHotspotExplored(monument.slug, id))
         setExploredIds(merged)
       })
-      .catch(() => { /* non-fatal */ })
+      .catch(() => {
+        /* non-fatal */
+      })
   }, [monument.slug])
+
+  const sortedHotspots = useMemo(
+    () => [...monument.hotspots].sort((a, b) => a.displayOrder - b.displayOrder),
+    [monument.hotspots]
+  )
+  // The first unexplored chapter is the one participants need to scan next
+  const nextTarget = sortedHotspots.find((h) => !exploredIds.includes(h.id))
 
   function openHotspot(hotspot: Hotspot) {
     setActiveHotspot(hotspot)
@@ -727,57 +773,79 @@ function OrganizerExplore({ monument }: OrganizerExploreProps) {
     }
   }
 
-  function closePanel() {
-    setActiveHotspot(null)
-  }
-
-  const sortedHotspots = [...monument.hotspots].sort((a, b) => a.displayOrder - b.displayOrder)
-
-  function navigatePanel(direction: 'prev' | 'next') {
-    if (!activeHotspot) return
-    const idx = sortedHotspots.findIndex((h) => h.id === activeHotspot.id)
-    const next = direction === 'prev' ? sortedHotspots[idx - 1] : sortedHotspots[idx + 1]
-    if (next) {
-      openHotspot(next)
-    }
-  }
-
   const activeIdx = activeHotspot ? sortedHotspots.findIndex((h) => h.id === activeHotspot.id) : -1
   const activeStory = activeHotspot ? monument.stories.find((s) => s.hotspotId === activeHotspot.id) : undefined
 
+  function navigatePanel(direction: 'prev' | 'next') {
+    const target = sortedHotspots[activeIdx + (direction === 'prev' ? -1 : 1)]
+    if (target) openHotspot(target)
+  }
+
   return (
-    <main className={`explore-page explore-page--full ${monument.accent}`}>
+    <main className={`explore-page explore-page--full xp-scope ${monument.accent}`} style={scopeStyle(accentColor)}>
+      <style>{STYLES}</style>
+
       <SiteHeader
         className="detail-header explore-fixed-header"
-        left={<Link href={`/monuments/${monument.slug}`} className="text-link"><ArrowLeft size={16} /> Monument</Link>}
-        right={<span style={{ fontSize: 13, color: 'var(--muted)' }}>{exploredIds.length} / {monument.hotspots.length} explored</span>}
+        left={
+          <Link href={`/monuments/${monument.slug}`} className="text-link">
+            <ArrowLeft size={16} /> Monument
+          </Link>
+        }
+        right={
+          <span style={{ fontSize: 13, color: 'var(--muted)' }}>
+            {exploredIds.length} / {monument.hotspots.length} explored
+          </span>
+        }
       />
 
       <div className="explorer-layout">
         <aside className="explorer-sidebar">
           <div className="explorer-sidebar-inner">
-            <p className="eyebrow" style={{ color: accentColor }}>
+            <p className="eyebrow" style={{ color: 'var(--ink)' }}>
               <span className="eyebrow-line" style={{ background: accentColor }} />
               {monument.subject}
             </p>
             <h1 className="explorer-title">{monument.name}</h1>
 
-            <div className="explorer-progress-bar-wrap">
-              <div className="explorer-progress-bar">
-                <div
-                  className="explorer-progress-fill"
-                  style={{
-                    width: `${(exploredIds.length / monument.hotspots.length) * 100}%`,
-                    background: accentColor,
-                  }}
-                />
-              </div>
-              <span className="explorer-progress-label">
-                {exploredIds.length} of {monument.hotspots.length} chapters explored
-              </span>
-            </div>
+            <ProgressSegments total={monument.hotspots.length} count={exploredIds.length} label="chapters explored" />
 
-            <div className="chapter-list-explorer">
+            {isComplete ? (
+              <section className="xp-card xp-card--active xp-complete" aria-live="polite">
+                <p className="xp-complete-head">
+                  <CheckCircle2 size={22} style={{ flexShrink: 0 }} /> All chapters explored
+                </p>
+                <Link href={`/challenge/${monument.slug}/instructions`} className="xp-btn xp-btn--solid">
+                  View challenge setup <ArrowRight size={16} />
+                </Link>
+              </section>
+            ) : (
+              nextTarget && (
+                <section className="xp-card xp-card--active xp-qr-side">
+                  <div>
+                    <p className="xp-label" style={{ margin: 0 }}>Next marker to scan</p>
+                    <p className="xp-title" style={{ margin: '4px 0 0' }}>
+                      {nextTarget.chapter}: {nextTarget.label}
+                    </p>
+                  </div>
+                  <div className="xp-qr-frame">
+                    <HotspotQRCode
+                      slug={monument.slug}
+                      hotspotId={nextTarget.id}
+                      size={168}
+                      bgColor="#ffffff"
+                      fgColor="#101418"
+                    />
+                  </div>
+                  <p className="xp-muted" style={{ margin: 0 }}>
+                    Participants scan this with their phones. Explore all {monument.hotspots.length} chapters to set up
+                    the challenge.
+                  </p>
+                </section>
+              )
+            )}
+
+            <div className="chapter-list-explorer" style={{ marginTop: 24 }}>
               {sortedHotspots.map((hotspot) => {
                 const explored = exploredIds.includes(hotspot.id)
                 const active = activeHotspot?.id === hotspot.id
@@ -789,7 +857,7 @@ function OrganizerExplore({ monument }: OrganizerExploreProps) {
                     aria-label={`${hotspot.chapter}: ${hotspot.label}${explored ? ' (explored)' : ''}`}
                     style={active ? { borderLeftColor: accentColor } : undefined}
                   >
-                    <span className="chapter-item-number" style={{ color: accentColor }}>
+                    <span className="chapter-item-number" style={{ color: 'var(--ink)' }}>
                       {String(hotspot.displayOrder).padStart(2, '0')}
                     </span>
                     <span className="chapter-item-label">{hotspot.label}</span>
@@ -802,90 +870,36 @@ function OrganizerExplore({ monument }: OrganizerExploreProps) {
                 )
               })}
             </div>
-
-            {isComplete ? (
-              <div className="explorer-unlock">
-                <div className="explorer-unlock-badge" style={{ borderColor: accentColor, color: accentColor }}>
-                  <CheckCircle2 size={18} /> All {monument.hotspots.length} chapters explored
-                </div>
-                <Link
-                  href={`/challenge/${monument.slug}/instructions`}
-                  className="button button-dark explorer-challenge-btn"
-                >
-                  View Challenge Setup <ArrowRight size={16} />
-                </Link>
-              </div>
-            ) : (
-              <p className="explorer-cta-hint">
-                Tap any hotspot on the portrait to open a chapter. Explore all {monument.hotspots.length} to set up the challenge.
-              </p>
-            )}
           </div>
         </aside>
 
         <div className="explorer-portrait-wrap">
           <div className="explorer-portrait-container">
-            <div
-              className="explorer-portrait-bg"
-              aria-label={`${monument.subject} portrait`}
-            >
-              {monument.slug === 'tinubu' ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src="/tinubu.png"
-                  alt="President Bola Ahmed Tinubu"
-                  className="portrait-image"
-                  draggable={false}
-                />
-              ) : monument.slug === 'sanwo-olu' ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src="/sanwo-olu.png"
-                  alt="Governor Babajide Sanwo-Olu"
-                  className="portrait-image"
-                  draggable={false}
-                />
-              ) : (
-                <div className="portrait-silhouette" style={{ background: monument.accent === 'green' ? '#d6ead9' : '#d5eaf5' }}>
-                  <div className="silhouette-figure" style={{ background: accentColor }} />
-                  <span className="portrait-label">{monument.subject}</span>
-                </div>
-              )}
+            <div className="explorer-portrait-bg" aria-label={`${monument.subject} portrait`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={monument.image}
+                alt={monument.subject}
+                className="portrait-image"
+                draggable={false}
+                style={{ objectFit: monument.portraitFit ?? 'cover' }}
+              />
 
               {sortedHotspots.map((hotspot) => {
                 const explored = exploredIds.includes(hotspot.id)
                 const active = activeHotspot?.id === hotspot.id
-                // The next unexplored hotspot is the one participants need to scan
-                const isNextTarget = !explored && exploredIds.length === sortedHotspots.indexOf(hotspot)
+                const isNext = nextTarget?.id === hotspot.id
                 return (
                   <button
                     key={hotspot.id}
-                    className={`hotspot-btn${explored ? ' hotspot-explored' : ''}${active ? ' hotspot-active' : ''}`}
-                    style={{
-                      left: `${hotspot.x}%`,
-                      top: `${hotspot.y}%`,
-                      borderColor: accentColor,
-                      background: explored ? accentColor : 'rgba(255,255,255,0.92)',
-                      color: explored ? '#fff' : accentColor,
-                      ...(active ? { transform: 'translate(-50%, -50%) scale(1.25)', zIndex: 10, boxShadow: `0 0 0 4px ${accentColor}33` } : {}),
-                      ...(isNextTarget ? { animation: 'pulse-hotspot-org 2s infinite', zIndex: 10 } : {}),
-                    }}
+                    type="button"
+                    className={`xp-marker${explored ? ' is-done' : ''}${active ? ' is-active' : ''}${isNext ? ' is-current' : ''}`}
+                    style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
                     onClick={() => openHotspot(hotspot)}
-                    aria-label={`Chapter ${hotspot.displayOrder}: ${hotspot.label}${explored ? ' — explored' : ''}`}
+                    aria-label={`Chapter ${hotspot.displayOrder}: ${hotspot.label}${explored ? ' (explored)' : ''}`}
                     title={`${hotspot.metaphor}: ${hotspot.label}`}
                   >
-                    {isNextTarget ? (
-                      /* Show QR code for the active scan target */
-                      <HotspotQRCode
-                        slug={monument.slug}
-                        hotspotId={hotspot.id}
-                        size={64}
-                        bgColor="transparent"
-                        fgColor={accentColor}
-                      />
-                    ) : (
-                      hotspot.displayOrder
-                    )}
+                    {hotspot.displayOrder}
                   </button>
                 )
               })}
@@ -895,8 +909,9 @@ function OrganizerExplore({ monument }: OrganizerExploreProps) {
                   className="hotspot-active-label"
                   style={{
                     left: `${activeHotspot.x}%`,
-                    top: `${activeHotspot.y + 5}%`,
+                    top: `${activeHotspot.y + 6}%`,
                     background: accentColor,
+                    color: readableOn(accentColor),
                   }}
                 >
                   {activeHotspot.metaphor}
@@ -905,21 +920,23 @@ function OrganizerExplore({ monument }: OrganizerExploreProps) {
             </div>
           </div>
 
-          <p className="portrait-mobile-hint">Tap a numbered marker to explore that chapter</p>
+          <p className="xp-hint">Tap a numbered marker to open that chapter.</p>
         </div>
       </div>
 
       {activeHotspot && (
         <StoryPanel
+          key={activeHotspot.id}
           monument={monument}
           hotspot={activeHotspot}
           story={activeStory}
-          onClose={closePanel}
-          onPrev={() => navigatePanel('prev')}
-          onNext={() => navigatePanel('next')}
-          hasPrev={activeIdx > 0}
-          hasNext={activeIdx < sortedHotspots.length - 1}
-          accentColor={accentColor}
+          onClose={() => setActiveHotspot(null)}
+          nav={{
+            onPrev: () => navigatePanel('prev'),
+            onNext: () => navigatePanel('next'),
+            hasPrev: activeIdx > 0,
+            hasNext: activeIdx < sortedHotspots.length - 1,
+          }}
         />
       )}
     </main>
@@ -949,7 +966,7 @@ export default function ExplorePage({ params }: { params: Promise<{ slug: string
       router.replace('/monuments')
       return
     }
-    
+
     setMonument(m)
     setUserRole(player.userRole)
     setReady(true)
@@ -957,7 +974,7 @@ export default function ExplorePage({ params }: { params: Promise<{ slug: string
 
   if (!ready || !monument) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
         <span className="spinner spinner--lg" aria-label="Loading…" />
       </div>
     )
@@ -968,6 +985,6 @@ export default function ExplorePage({ params }: { params: Promise<{ slug: string
   return userRole === 'participant' ? (
     <ParticipantExplore monument={monument} accentColor={accentColor} justUnlockedId={justUnlockedId} />
   ) : (
-    <OrganizerExplore monument={monument} />
+    <OrganizerExplore monument={monument} accentColor={accentColor} />
   )
 }
