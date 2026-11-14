@@ -66,7 +66,9 @@ export default function ScannerPage({ params }: { params: Promise<{ slug: string
 
         const { progress } = await res.json()
         const scannedIds = new Set<string>(
-          (progress as Array<{ hotspot_id: string }>).map((p) => p.hotspot_id)
+          (progress as Array<{ hotspot_id: string }>)
+            .map((p) => p.hotspot_id)
+            .filter((id: string) => id !== '__access__')
         )
         const sorted = [...monument!.hotspots].sort((a, b) => a.displayOrder - b.displayOrder)
         const next   = sorted.find((h) => !scannedIds.has(h.id))
