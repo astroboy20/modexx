@@ -14,8 +14,9 @@ interface ScorecardPreviewProps {
   onClose: () => void
 }
 
-const LAGOS_ELECTION      = new Date('2027-02-06T08:00:00')
+const LAGOS_ELECTION        = new Date('2027-02-06T08:00:00')
 const PRESIDENTIAL_ELECTION = new Date('2027-01-16T08:00:00')
+const EKITI_ELECTION        = new Date('2026-06-20T08:00:00')
 
 function daysUntil(date: Date): string {
   const diff = date.getTime() - Date.now()
@@ -43,8 +44,15 @@ const ELECTION_CONFIG = {
     portrait:      '/oyebanji-portrait.png',
     subjectImg:    '/ekiti-governor.png',
     cta:           'Vote Oyebanji 2027',
-    electionDate:  LAGOS_ELECTION,
+    electionDate:  EKITI_ELECTION,
     electionLabel: 'Ekiti Governorship · Jun 20, 2026',
+  },
+  'ekiti-logo': {
+    portrait:      '/ekiti-logo.jfif',
+    subjectImg:    '/ekiti-logo.jfif',
+    cta:           'Explore Ekiti',
+    electionDate:  EKITI_ELECTION,
+    electionLabel: 'Ekiti State · Land of Honour',
   },
 } as const
 
@@ -310,7 +318,7 @@ export default function ScorecardPreview({
   const blobRef = useRef<Blob | null>(null)
 
   const accentColor  = monument.accent === 'green' ? '#168447' : '#46a9d8'
-  const electionCfg  = ELECTION_CONFIG[monument.slug as keyof typeof ELECTION_CONFIG] ?? ELECTION_CONFIG.tinubu
+  const electionCfg  = ELECTION_CONFIG[monument.slug as keyof typeof ELECTION_CONFIG] ?? ELECTION_CONFIG.oyebanji
   const countdown    = daysUntil(electionCfg.electionDate)
 
   useEffect(() => {
@@ -452,7 +460,8 @@ export default function ScorecardPreview({
               ))}
             </div>
 
-            {/* Election section */}
+            {/* Election section — hidden for ekiti-logo and oyebanji */}
+            {!['ekiti-logo', 'oyebanji'].includes(monument.slug) && (
             <div style={{ margin: '14px 20px 0', padding: '14px', background: `${accentColor}10`, border: `1.5px solid ${accentColor}30`, borderRadius: '10px', display: 'flex', gap: '14px', alignItems: 'center' }}>
               <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', flexShrink: 0, border: `2px solid ${accentColor}` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -466,6 +475,7 @@ export default function ScorecardPreview({
                 </span>
               </div>
             </div>
+            )}
 
             <div className="sc-cta-section">
               <p className="sc-cta-text">Can you beat my score?</p>

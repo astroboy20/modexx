@@ -75,6 +75,7 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
           )}
 
           <div className="instructions-status" style={{ borderColor: locked ? 'var(--line)' : accentColor, background: locked ? 'var(--soft)' : accentSoft }}>
+            
             <div className="status-row">
               {locked
                 ? <Lock size={20} style={{ color: 'var(--muted)', flexShrink: 0 }} />
@@ -84,6 +85,7 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
                 {locked && <p className="status-desc">{exploredCount} of {total} chapters explored</p>}
               </div>
             </div>
+
             {locked && (
               <div className="status-progress-bar">
                 <div className="status-progress-fill" style={{ width: `${(exploredCount / total) * 100}%`, background: accentColor }} />
