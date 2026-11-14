@@ -347,7 +347,6 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
   const [connection, setConnection] = useState<Connection>('connecting')
   // activeChapter = index into sortedHotspots for the chapter currently being read
   const [activeChapter, setActiveChapter] = useState<number | null>(null)
-  const [showQR, setShowQR] = useState(false)
 
   const completedRef = useRef(completed)
   completedRef.current = completed
@@ -577,18 +576,13 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
               <section className="xp-card xp-card--active" aria-live="polite">
                 <p className="xp-label">Chapter {currentHotspot.displayOrder} of {total}</p>
                 <blockquote className="xp-clue">{currentHotspot.metaphor}</blockquote>
-                <ol className="xp-steps">
-                  <li>Find the numbered marker on the portrait — the arrow points to it.</li>
-                  <li>Tap the marker to show its QR code, then scan with your phone.</li>
-                  <li>Read the chapter. Finishing it unlocks the next one.</li>
-                </ol>
-                <div className="xp-actions">
-                  <button type="button" className="xp-btn xp-btn--solid" onClick={() => setShowQR(true)}>
-                    <QrCode size={18} /> Show QR code
+                <p className="xp-muted" style={{ margin: 0, lineHeight: 1.6 }}>
+                  Tap the marker on the portrait or the button below to read this chapter. Finishing it unlocks the next one.
+                </p>
+                <div className="xp-actions" style={{ marginTop: 14 }}>
+                  <button type="button" className="xp-btn xp-btn--solid" onClick={() => setActiveChapter(currentIdx)}>
+                    Read Chapter {currentHotspot.displayOrder} <ArrowRight size={16} />
                   </button>
-                  <Link href={`/monuments/${monument.slug}/scanner`} className="xp-btn xp-btn--ghost">
-                    <Camera size={18} /> Scan with this device
-                  </Link>
                 </div>
                 <LiveStatus connection={connection} />
               </section>
@@ -646,8 +640,8 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
                   type="button"
                   className="xp-marker is-current"
                   style={{ left: `${currentHotspot.x}%`, top: `${currentHotspot.y}%` }}
-                  onClick={() => setShowQR(true)}
-                  aria-label={`Show QR code for chapter ${currentHotspot.displayOrder}`}
+                  onClick={() => setActiveChapter(currentIdx)}
+                  aria-label={`Read chapter ${currentHotspot.displayOrder}: ${currentHotspot.label}`}
                   data-ar-marker={`hotspot-${currentHotspot.id}`}
                 >
                   {currentHotspot.displayOrder}
@@ -655,14 +649,9 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
               )}
             </div>
           </div>
-          {!allCompleted && <p className="xp-hint">Tap the numbered marker → to show its QR code.</p>}
+          {!allCompleted && <p className="xp-hint">Tap the numbered marker to read the chapter.</p>}
         </div>
       </div>
-
-      {/* QR modal for the current chapter */}
-      {showQR && currentHotspot && (
-        <QRModal monument={monument} hotspot={currentHotspot} connection={connection} onClose={() => setShowQR(false)} />
-      )}
 
       {/* Chapter card deck — reading mode */}
       {activeHotspot && (
