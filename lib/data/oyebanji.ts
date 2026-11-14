@@ -8,21 +8,22 @@ export const oyebanjiMonument: Monument = {
   office: 'Governor of Ekiti State',
   scope: 'Governorship · 16 October 2022 — present',
   accent: 'green',
-  image: '/hamzat.jpg',
+  image: '/oyebanji-portrait.png',
+  portraitFit: 'contain',
   intro:
     'From the hills of Ikogosi to Government House in Ado-Ekiti — 10 chapters tracing the life, public service record, and governance of Biodun Abayomi Oyebanji, the first governor in Ekiti State history to win a consecutive second term.',
 
   hotspots: [
-    { id: 'oye-h1',  label: 'Ikogosi Beginnings',       metaphor: 'Cap',          chapter: 'Chapter 01', x: 50, y: 3,  displayOrder: 1 },
-    { id: 'oye-h2',  label: 'The Policy Lens',           metaphor: 'Glasses',      chapter: 'Chapter 02', x: 54, y: 9,  displayOrder: 2 },
-    { id: 'oye-h3',  label: 'Timeline of Service',       metaphor: 'Wristwatch',   chapter: 'Chapter 03', x: 59, y: 41, displayOrder: 3 },
-    { id: 'oye-h4',  label: 'The Governing Framework',   metaphor: 'Torso/Outfit', chapter: 'Chapter 04', x: 45, y: 33, displayOrder: 4 },
-    { id: 'oye-h5',  label: 'Institutions & Decisions',  metaphor: 'Hands',        chapter: 'Chapter 05', x: 46, y: 43, displayOrder: 5 },
-    { id: 'oye-h6',  label: 'Statehood & Identity',      metaphor: 'Collar',       chapter: 'Chapter 06', x: 52, y: 20, displayOrder: 6 },
-    { id: 'oye-h7',  label: 'Human Capital',             metaphor: 'Lapel/Pocket', chapter: 'Chapter 07', x: 16, y: 45, displayOrder: 7 },
-    { id: 'oye-h8',  label: 'Agriculture & Livelihoods', metaphor: 'Belt',         chapter: 'Chapter 08', x: 60, y: 47, displayOrder: 8 },
-    { id: 'oye-h9',  label: 'Connecting Ekiti',          metaphor: 'Shoes',        chapter: 'Chapter 09', x: 62, y: 94, displayOrder: 9 },
-    { id: 'oye-h10', label: 'Record & Accountability',   metaphor: 'Full Figure',  chapter: 'Chapter 10', x: 82, y: 47, displayOrder: 10 },
+       { id: 'oye-h1', label: 'Ikogosi Beginnings', metaphor: 'Cap', chapter: 'Chapter 01', x: 56, y: 6, displayOrder: 1 },
+    { id: 'oye-h2', label: 'The Policy Lens', metaphor: 'Glasses', chapter: 'Chapter 02', x: 42, y: 9, displayOrder: 2 },
+    { id: 'oye-h3', label: 'Timeline of Service', metaphor: 'Wristwatch', chapter: 'Chapter 03', x: 63, y: 45, displayOrder: 3 },
+    { id: 'oye-h4', label: 'The Governing Framework', metaphor: 'Torso/Outfit', chapter: 'Chapter 04', x: 64, y: 25, displayOrder: 4 },
+    { id: 'oye-h5', label: 'Institutions & Decisions', metaphor: 'Hands', chapter: 'Chapter 05', x: 53, y: 47, displayOrder: 5 },
+    { id: 'oye-h6', label: 'Statehood & Identity', metaphor: 'Collar', chapter: 'Chapter 06', x: 50, y: 18, displayOrder: 6 },
+    { id: 'oye-h7', label: 'Human Capital', metaphor: 'Lapel/Pocket', chapter: 'Chapter 07', x: 55, y: 36, displayOrder: 7 },
+    { id: 'oye-h8', label: 'Agriculture & Livelihoods', metaphor: 'Belt', chapter: 'Chapter 08', x: 59, y: 54, displayOrder: 8 },
+    { id: 'oye-h9', label: 'Connecting Ekiti', metaphor: 'Shoes', chapter: 'Chapter 09', x: 65, y: 94, displayOrder: 9 },
+    { id: 'oye-h10', label: 'Record & Accountability', metaphor: 'Full Figure', chapter: 'Chapter 10', x: 59, y: 86, displayOrder: 10 },
   ],
 
   stories: [

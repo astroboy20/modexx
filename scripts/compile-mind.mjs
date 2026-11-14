@@ -30,6 +30,6 @@ async function compileImage(inputPath, outputPath) {
   console.log(`  ✓ Saved to ${outputPath}`)
 }
 
-await compileImage('public/tinubu.png', 'public/tinubu.mind')
+await compileImage('public/tinubu-president.jpg', 'public/tinubu.mind')
 await compileImage('public/sanwo-olu.png', 'public/sanwo-olu.mind')
 console.log('Done!')

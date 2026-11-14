@@ -14,12 +14,12 @@ export const ekitiLogoMonument: Monument = {
     'The Ekiti State emblem is a circular landscape-based visual identity built around six meaning-bearing elements. Each symbol carries the history, values, and aspirations of the Land of Honour. Explore every element and discover what makes Ekiti truly unique.',
 
   hotspots: [
-    { id: 'ekiti-h1', label: 'The Woven Cord',   metaphor: 'Outer Border',    chapter: 'Chapter 01', x: 50, y: 6,  displayOrder: 1 },
-    { id: 'ekiti-h2', label: 'The New Dawn',      metaphor: 'Rising Sun',      chapter: 'Chapter 02', x: 50, y: 20, displayOrder: 2 },
-    { id: 'ekiti-h3', label: 'The Rolling Hills', metaphor: 'Hills/Landscape', chapter: 'Chapter 03', x: 20, y: 42, displayOrder: 3 },
-    { id: 'ekiti-h4', label: 'The Vegetation',    metaphor: 'Green Trees',     chapter: 'Chapter 04', x: 80, y: 42, displayOrder: 4 },
-    { id: 'ekiti-h5', label: 'The Water',         metaphor: 'Ikogosi Spring',  chapter: 'Chapter 05', x: 50, y: 60, displayOrder: 5 },
-    { id: 'ekiti-h6', label: 'The Open Book',     metaphor: 'Book at Base',    chapter: 'Chapter 06', x: 50, y: 85, displayOrder: 6 },
+        { id: 'ekiti-h1', label: 'The Woven Cord', metaphor: 'Outer Border', chapter: 'Chapter 01', x: 78, y: 11, displayOrder: 1 },
+    { id: 'ekiti-h2', label: 'The New Dawn', metaphor: 'Rising Sun', chapter: 'Chapter 02', x: 60, y: 23, displayOrder: 2 },
+    { id: 'ekiti-h3', label: 'The Rolling Hills', metaphor: 'Hills/Landscape', chapter: 'Chapter 03', x: 65, y: 30, displayOrder: 3 },
+    { id: 'ekiti-h4', label: 'The Vegetation', metaphor: 'Green Trees', chapter: 'Chapter 04', x: 31, y: 42, displayOrder: 4 },
+    { id: 'ekiti-h5', label: 'The Water', metaphor: 'Ikogosi Spring', chapter: 'Chapter 05', x: 49, y: 46, displayOrder: 5 },
+    { id: 'ekiti-h6', label: 'The Open Book', metaphor: 'Book at Base', chapter: 'Chapter 06', x: 55, y: 51, displayOrder: 6 },
   ],
 
   stories: [

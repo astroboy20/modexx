@@ -36,7 +36,7 @@ const heroSlides = [
     index: "MX / 002",
   },
   {
-    img: "/hamzat.jpg",
+    img: "/ekiti-governor.png",
     label: "Biodun Oyebanji",
     sub: "Governor, Ekiti State",
     index: "MX / 003",

@@ -35,6 +35,9 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
   const [ready, setReady] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
+  // Monuments that don't require a voter's card number
+  const requiresVoterCard = !['oyebanji', 'ekiti-logo'].includes(slug)
+
   useEffect(() => {
     const player = getClientSession()
     if (!player) { router.replace(`/signin?redirect=/challenge/${slug}/quiz`); return }
@@ -106,8 +109,8 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
     const unanswered = questions.filter((q) => answers[q.id] === undefined).length
     if (unanswered > 0) { setShowConfirm(true); return }
     
-    // For participants, show voter card modal before submitting
-    if (userRole === 'participant') {
+    // For participants, show voter card modal before submitting (unless monument skips it)
+    if (userRole === 'participant' && requiresVoterCard) {
       setShowVoterCardModal(true)
     } else {
       finalSubmit()
@@ -191,7 +194,7 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
             <h3>Submit with unanswered questions?</h3>
             <p>You have {questions.filter((q) => answers[q.id] === undefined).length} unanswered question(s). Unanswered questions score 0 points.</p>
             <div className="confirm-actions">
-              <button className="button button-dark" onClick={() => { setShowConfirm(false); if (userRole === 'participant') setShowVoterCardModal(true); else finalSubmit() }}>Submit anyway</button>
+              <button className="button button-dark" onClick={() => { setShowConfirm(false); if (userRole === 'participant' && requiresVoterCard) setShowVoterCardModal(true); else finalSubmit() }}>Submit anyway</button>
               <button className="button" style={{ background: 'var(--soft)', color: 'var(--ink)' }} onClick={() => setShowConfirm(false)}>Go back</button>
             </div>
           </div>

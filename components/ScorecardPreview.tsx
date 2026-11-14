@@ -33,11 +33,18 @@ const ELECTION_CONFIG = {
     electionLabel: 'Presidential Election · Jan 16, 2027',
   },
   'sanwo-olu': {
-    portrait:      '/hamzat.jpg',
+    portrait:      '/sanwo-olu.png',
     subjectImg:    '/sanwo-olu.png',
-    cta:           'Vote Hamzat 2027',
+    cta:           'Vote Sanwo-Olu 2027',
     electionDate:  LAGOS_ELECTION,
     electionLabel: 'Lagos Governorship · Feb 6, 2027',
+  },
+  oyebanji: {
+    portrait:      '/oyebanji-portrait.png',
+    subjectImg:    '/ekiti-governor.png',
+    cta:           'Vote Oyebanji 2027',
+    electionDate:  LAGOS_ELECTION,
+    electionLabel: 'Ekiti Governorship · Jun 20, 2026',
   },
 } as const
 
