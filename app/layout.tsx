@@ -1,7 +1,20 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Toaster } from 'sonner'
+import { DM_Sans, Playfair_Display } from 'next/font/google'
 import './globals.css'
+
+const dmSans = DM_Sans({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+})
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-serif',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Modexx — Digital Monumental Experiences',
@@ -37,7 +50,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <body className={`antialiased ${dmSans.variable} ${playfair.variable}`}>
         {children}
         <Toaster position="top-center" richColors closeButton />
         {process.env.NODE_ENV === 'production' && <Analytics />}
