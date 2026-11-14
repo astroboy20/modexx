@@ -14,12 +14,12 @@ export const ekitiLogoMonument: Monument = {
     'The Ekiti State emblem is a circular landscape-based visual identity built around six meaning-bearing elements. Each symbol carries the history, values, and aspirations of the Land of Honour. Explore every element and discover what makes Ekiti truly unique.',
 
   hotspots: [
-        { id: 'ekiti-h1', label: 'The Woven Cord', metaphor: 'Outer Border', chapter: 'Chapter 01', x: 78, y: 11, displayOrder: 1 },
-    { id: 'ekiti-h2', label: 'The New Dawn', metaphor: 'Rising Sun', chapter: 'Chapter 02', x: 60, y: 23, displayOrder: 2 },
-    { id: 'ekiti-h3', label: 'The Rolling Hills', metaphor: 'Hills/Landscape', chapter: 'Chapter 03', x: 65, y: 30, displayOrder: 3 },
-    { id: 'ekiti-h4', label: 'The Vegetation', metaphor: 'Green Trees', chapter: 'Chapter 04', x: 31, y: 42, displayOrder: 4 },
-    { id: 'ekiti-h5', label: 'The Water', metaphor: 'Ikogosi Spring', chapter: 'Chapter 05', x: 49, y: 46, displayOrder: 5 },
-    { id: 'ekiti-h6', label: 'The Open Book', metaphor: 'Book at Base', chapter: 'Chapter 06', x: 55, y: 51, displayOrder: 6 },
+           { id: 'ekiti-h1', label: 'The Woven Cord', metaphor: 'Outer Border', chapter: 'Chapter 01', x: 78, y: 11, displayOrder: 1, lx: 96.07944729452322, ly: 10.634386328327292 },
+    { id: 'ekiti-h2', label: 'The New Dawn', metaphor: 'Rising Sun', chapter: 'Chapter 02', x: 57, y: 22, displayOrder: 2, lx: 96.37305643155966, ly: 21.125841532884515 },
+    { id: 'ekiti-h3', label: 'The Rolling Hills', metaphor: 'Hills/Landscape', chapter: 'Chapter 03', x: 58, y: 29, displayOrder: 3, lx: 96.72538805484572, ly: 28.95442775763853 },
+    { id: 'ekiti-h4', label: 'The Vegetation', metaphor: 'Green Trees', chapter: 'Chapter 04', x: 34, y: 42, displayOrder: 4, lx: 6.2314347122156875, ly: 53.72035214914552 },
+    { id: 'ekiti-h5', label: 'The Water', metaphor: 'Ikogosi Spring', chapter: 'Chapter 05', x: 51, y: 47, displayOrder: 5, lx: 97.06562965760358, ly: 45.96012428793371 },
+    { id: 'ekiti-h6', label: 'The Open Book', metaphor: 'Book at Base', chapter: 'Chapter 06', x: 55, y: 53, displayOrder: 6, lx: 93.94127751375038, ly: 54.11444847229415 },
   ],
 
   stories: [
