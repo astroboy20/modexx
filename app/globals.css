@@ -127,8 +127,8 @@ a { color:inherit; text-decoration:none; }
 /* ── Explorer ───────────────────────────────────────────────────────────── */
 .explore-page--full { min-height:100vh; background:var(--paper); }
 .explore-fixed-header { position:sticky; top:0; z-index:20; background:var(--paper); border-bottom:1px solid var(--line); }
-.explorer-layout { display:grid; grid-template-columns:380px 1fr; min-height:calc(100vh - 80px); }
-.explorer-sidebar { border-right:1px solid var(--line); background:var(--soft); overflow-y:auto; }
+.explorer-layout { display:grid; grid-template-columns:380px 1fr; min-height:calc(100vh - 56px); }
+.explorer-sidebar { border-right:1px solid var(--line); background:var(--soft); overflow-y:auto; max-height:calc(100vh - 56px); position:sticky; top:56px; }
 .explorer-sidebar-inner { padding:36px 32px 48px; }
 .explorer-title { font-size:clamp(22px,3vw,32px); line-height:1; letter-spacing:-1.5px; font-weight:800; margin:16px 0 24px; }
 .explorer-progress-bar-wrap { margin-bottom:28px; }
@@ -158,16 +158,16 @@ a { color:inherit; text-decoration:none; }
 .hotspot-btn:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
 .portrait-mobile-hint { display:none; font-size:12px; color:var(--muted); text-align:center; margin-top:14px; }
 @media (max-width:900px) {
-  .explorer-layout { grid-template-columns:1fr; grid-template-rows:auto 1fr; }
-  .explorer-sidebar { border-right:none; border-bottom:1px solid var(--line); max-height:none; }
-  .explorer-portrait-wrap { padding:24px 20px 36px; }
-  .explorer-portrait-container { max-width:360px; }
+  .explorer-layout { grid-template-columns:1fr; grid-template-rows:auto auto; }
+  .explorer-sidebar { border-right:none; border-bottom:1px solid var(--line); max-height:none; order:2; }
+  .explorer-portrait-wrap { padding:16px 20px 20px; order:1; }
+  .explorer-portrait-container { max-width:min(340px, 90vw); }
   .portrait-mobile-hint { display:block; }
   .explorer-title { font-size:22px; letter-spacing:-1px; }
 }
 @media (max-width:600px) {
   .explorer-sidebar-inner { padding:24px 16px 32px; }
-  .explorer-portrait-container { max-width:100%; }
+  .explorer-portrait-container { max-width:min(300px, 88vw); }
   .hotspot-btn { width:30px; height:30px; font-size:10px; }
 }
 

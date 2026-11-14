@@ -10,10 +10,12 @@ const { Server } = require('socket.io')
 const { createClient } = require('@supabase/supabase-js')
 
 const dev = process.env.NODE_ENV !== 'production'
-const hostname = dev ? 'localhost' : '0.0.0.0'
 const port = parseInt(process.env.PORT || '3000', 10)
 
-const app = next({ dev, hostname, port })
+// Next.js needs hostname:'localhost' so it embeds the correct HMR websocket URL
+// in the browser bundle. The HTTP server itself will listen on 0.0.0.0 so other
+// devices on the same Wi-Fi can reach it via the machine's IP address.
+const app = next({ dev, hostname: 'localhost', port })
 const handle = app.getRequestHandler()
 
 // We validate sessions by checking the player exists in Supabase
@@ -40,7 +42,7 @@ app.prepare().then(() => {
     cors: {
       origin: process.env.NODE_ENV === 'production'
         ? (process.env.NEXT_PUBLIC_APP_URL || true)
-        : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+        : true,  // allow all origins in dev so any device on the network can connect
       methods: ['GET', 'POST'],
       credentials: true,
     },
@@ -204,8 +206,9 @@ app.prepare().then(() => {
       console.error(err)
       process.exit(1)
     })
-    .listen(port, () => {
-      console.log(`> Ready on http://${hostname}:${port}`)
+    .listen(port, '0.0.0.0', () => {
+      console.log(`> Ready on http://localhost:${port}`)
+      console.log(`> Network:  http://10.76.244.2:${port}  ← open this on other devices (same Wi-Fi)`)
       console.log(`> WebSocket server running`)
     })
 })

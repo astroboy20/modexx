@@ -113,10 +113,11 @@ button.xp-trail-item:hover{background:var(--xp-tint)}
 .xp-marker--sm{width:28px;height:28px;font-size:11px}
 .xp-marker.is-done{background:var(--xp-accent);color:var(--xp-on);border-color:#fff}
 .xp-marker.is-active{scale:1.2;z-index:10}
-.xp-marker.is-current{width:36px;height:36px;z-index:10;background:var(--xp-accent);color:var(--xp-on);border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.35)}
-.xp-marker.is-current::after{content:"";position:absolute;right:-18px;top:50%;transform:translateY(-50%);width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:10px solid var(--xp-accent);pointer-events:none}
-.xp-marker.is-scanned::after{opacity:0}
+.xp-marker.is-current{width:40px;height:40px;z-index:10;background:var(--xp-accent);color:var(--xp-on);border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.35);animation:xp-pulse 2s ease-in-out infinite}
+.xp-marker.is-current::after{content:"";position:absolute;left:calc(100% + 4px);top:50%;transform:translateY(-50%);width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:10px solid var(--xp-accent);pointer-events:none}
+.xp-marker.is-scanned.is-current::after{opacity:0}
 .xp-hint{margin:16px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+@keyframes xp-pulse{0%,100%{box-shadow:0 2px 10px rgba(0,0,0,.35),0 0 0 0 color-mix(in srgb,var(--xp-accent) 55%,transparent)}60%{box-shadow:0 2px 10px rgba(0,0,0,.35),0 0 0 10px transparent}}
 
 /* QR modal */
 .xp-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;background:rgba(8,10,12,.82);backdrop-filter:blur(6px)}
@@ -706,6 +707,11 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
             setStory({ id: unlockId, mode: 'reveal' })
             // Drop ?unlocked= so a refresh doesn't replay the reveal
             router.replace(`/monuments/${monument.slug}/explore`, { scroll: false })
+          } else {
+            // DB hasn't reflected the scan yet — clear the ref so the WS handler
+            // can show the story when it fires, then clean the URL
+            justUnlockedRef.current = undefined
+            router.replace(`/monuments/${monument.slug}/explore`, { scroll: false })
           }
         }
       } catch (err) {
@@ -738,20 +744,30 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
           if (!hotspot || foundRef.current.has(hotspot.id)) return
 
           markHotspotExplored(monument.slug, hotspot.id)
-          setFound((prev) => new Set(prev).add(hotspot.id))
-          setShowQR(false)
-
-          // If this is part of a bulk gate unlock (found was empty), just
-          // silently add all chapters — don't cascade story panels
-          const wasEmpty = foundRef.current.size === 0
           setGateScanned(true)
 
-          if (wasEmpty) {
-            // First event of a gate scan — just mark and move on, no story popup
+          // Snapshot size BEFORE updating so we can tell if this is a bulk gate unlock
+          const prevSize = foundRef.current.size
+          setFound((prev) => {
+            const next = new Set(prev)
+            next.add(hotspot.id)
+            return next
+          })
+          setShowQR(false)
+
+          // Gate scan broadcasts multiple unlocks in rapid succession —
+          // treat any batch where the participant had 0 chapters as a silent gate unlock.
+          // Also treat it as silent if justUnlockedRef still has a value (means the
+          // ?unlocked= URL param will handle the reveal on the same device).
+          const isBulkGate = prevSize === 0
+          const urlHandlesReveal = !!justUnlockedRef.current
+
+          if (isBulkGate || urlHandlesReveal) {
+            // Silent add — gate scan or same-device scanner already handles the story popup
             return
           }
 
-          // Single-hotspot scan — show the scan feedback then open the story
+          // Single-hotspot scan from the OTHER device — show feedback then open the story
           setScanDetectedId(hotspot.id)
           const t = window.setTimeout(() => {
             if (!isMounted) return
@@ -1048,9 +1064,9 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
                     </p>
                     <blockquote className="xp-clue">{focusHotspot!.metaphor}</blockquote>
                     <ol className="xp-steps">
-                      <li>Find the numbered marker on the portrait — it has an arrow.</li>
-                      <li>Show its QR code and scan it with your phone.</li>
-                      <li>The story opens here automatically.</li>
+                      <li>Find the numbered marker on the portrait — the arrow points to it.</li>
+                      <li>Tap the marker to show its QR code.</li>
+                      <li>Scan the QR code with your phone. The story opens here automatically.</li>
                     </ol>
                     <div className="xp-actions">
                       <button type="button" className="xp-btn xp-btn--solid" onClick={() => setShowQR(true)}>
@@ -1139,7 +1155,7 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
                   </button>
                 ))}
 
-              {/* The one marker to find */}
+              {/* The one marker to find — only the current hotspot is shown; locked ones stay hidden */}
               {focusHotspot && (
                 <button
                   type="button"
@@ -1344,17 +1360,20 @@ function OrganizerExplore({ monument, accentColor }: { monument: Monument; accen
                 const explored = exploredIds.includes(hotspot.id)
                 const active = activeHotspot?.id === hotspot.id
                 const isNext = nextTarget?.id === hotspot.id
+                // Only show explored (done) markers and the next target.
+                // Locked future hotspots stay hidden to reveal one at a time.
+                if (!explored && !isNext) return null
                 return (
                   <button
                     key={hotspot.id}
                     type="button"
-                    className={`xp-marker${explored ? ' is-done' : ''}${active ? ' is-active' : ''}${isNext ? ' is-current' : ''}`}
+                    className={`xp-marker${explored ? (active ? ' is-active is-done' : ' xp-marker--sm is-done') : ''}${isNext && !explored ? ' is-current' : ''}`}
                     style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%` }}
                     onClick={() => openHotspot(hotspot)}
                     aria-label={`Chapter ${hotspot.displayOrder}: ${hotspot.label}${explored ? ' (explored)' : ''}`}
                     title={`${hotspot.metaphor}: ${hotspot.label}`}
                   >
-                    {hotspot.displayOrder}
+                    {explored ? (active ? hotspot.displayOrder : <Check size={12} />) : hotspot.displayOrder}
                   </button>
                 )
               })}
