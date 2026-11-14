@@ -93,6 +93,10 @@ button.xp-trail-item:hover{background:var(--xp-tint)}
 .xp-marker.is-current{width:40px;height:40px;z-index:10;background:var(--xp-accent);color:var(--xp-on);border:2.5px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.35);animation:xp-pulse 2s ease-in-out infinite}
 .xp-marker.is-current::after{content:"";position:absolute;left:calc(100% + 4px);top:50%;transform:translateY(-50%);width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:10px solid var(--xp-accent);pointer-events:none}
 .xp-hint{margin:16px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+.xp-arrows{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.xp-label-chip{position:absolute;transform:translate(-50%,-50%);z-index:8;display:grid;place-items:center;min-width:24px;height:24px;padding:0 7px;border-radius:5px;font:inherit;font-size:11px;font-weight:800;color:#fff;box-shadow:0 1px 5px rgba(0,0,0,.45);pointer-events:none;white-space:nowrap;line-height:24px}
+.xp-label-chip--done{opacity:.85}
+.xp-label-chip--current{z-index:12}
 @keyframes xp-pulse{0%,100%{box-shadow:0 2px 10px rgba(0,0,0,.35),0 0 0 0 color-mix(in srgb,var(--xp-accent) 55%,transparent)}60%{box-shadow:0 2px 10px rgba(0,0,0,.35),0 0 0 10px transparent}}
 .xp-modal{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;background:rgba(8,10,12,.82);backdrop-filter:blur(6px)}
 .xp-qr-card{display:grid;gap:14px;justify-items:center;width:min(340px,100%);padding:24px;border-radius:20px;background:#fff;color:#14181c;text-align:center;animation:xp-pop .25s ease-out}
@@ -636,16 +640,41 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={monument.image} alt={monument.subject} className="portrait-image" draggable={false} style={{ objectFit: monument.portraitFit ?? 'cover' }} />
               {currentHotspot && (
-                <button
-                  type="button"
-                  className="xp-marker is-current"
-                  style={{ left: `${currentHotspot.x}%`, top: `${currentHotspot.y}%` }}
-                  onClick={() => setActiveChapter(currentIdx)}
-                  aria-label={`Read chapter ${currentHotspot.displayOrder}: ${currentHotspot.label}`}
-                  data-ar-marker={`hotspot-${currentHotspot.id}`}
-                >
-                  {currentHotspot.displayOrder}
-                </button>
+                <>
+                  {/* SVG arrow from label to dot */}
+                  <svg className="xp-arrows" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <defs>
+                      <marker id="xp-ah-part" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                        <path d="M0,0 L6,3 L0,6 Z" fill={accentColor} />
+                      </marker>
+                    </defs>
+                    {(() => {
+                      const h = currentHotspot
+                      const lx = h.lx ?? h.x
+                      const ly = h.ly ?? h.y
+                      const dx = h.x - lx
+                      const dy = h.y - ly
+                      const len = Math.sqrt(dx * dx + dy * dy) || 1
+                      const ex = h.x - (dx / len) * 1.5
+                      const ey = h.y - (dy / len) * 1.5
+                      return <line x1={lx} y1={ly} x2={ex} y2={ey} stroke={accentColor} strokeWidth="0.4" strokeOpacity={0.75} markerEnd="url(#xp-ah-part)" />
+                    })()}
+                  </svg>
+                  {/* Number label at lx/ly */}
+                  <div className="xp-label-chip" style={{ left: `${currentHotspot.lx ?? currentHotspot.x}%`, top: `${currentHotspot.ly ?? currentHotspot.y}%`, background: accentColor }}>
+                    {currentHotspot.displayOrder}
+                  </div>
+                  <button
+                    type="button"
+                    className="xp-marker is-current"
+                    style={{ left: `${currentHotspot.x}%`, top: `${currentHotspot.y}%` }}
+                    onClick={() => setActiveChapter(currentIdx)}
+                    aria-label={`Read chapter ${currentHotspot.displayOrder}: ${currentHotspot.label}`}
+                    data-ar-marker={`hotspot-${currentHotspot.id}`}
+                  >
+                    {currentHotspot.displayOrder}
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -774,6 +803,58 @@ function OrganizerExplore({ monument, accentColor }: { monument: Monument; accen
             <div className="explorer-portrait-bg" aria-label={`${monument.subject} portrait`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={monument.image} alt={monument.subject} className="portrait-image" draggable={false} style={{ objectFit: monument.portraitFit ?? 'cover' }} />
+              {/* SVG arrows from labels to dots */}
+              <svg className="xp-arrows" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <defs>
+                  <marker id="xp-ah-org" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill={accentColor} />
+                  </marker>
+                </defs>
+                {sortedHotspots.map((hotspot) => {
+                  const explored = exploredIds.includes(hotspot.id)
+                  const isNext = nextTarget?.id === hotspot.id
+                  if (!explored && !isNext) return null
+                  const lx = hotspot.lx ?? hotspot.x
+                  const ly = hotspot.ly ?? hotspot.y
+                  const dx = hotspot.x - lx
+                  const dy = hotspot.y - ly
+                  const len = Math.sqrt(dx * dx + dy * dy) || 1
+                  const ex = hotspot.x - (dx / len) * 1.5
+                  const ey = hotspot.y - (dy / len) * 1.5
+                  const isCurrent = isNext && !explored
+                  return (
+                    <line
+                      key={`arrow-${hotspot.id}`}
+                      x1={lx} y1={ly} x2={ex} y2={ey}
+                      stroke={accentColor}
+                      strokeWidth="0.4"
+                      strokeOpacity={isCurrent ? 1 : 0.55}
+                      markerEnd="url(#xp-ah-org)"
+                    />
+                  )
+                })}
+              </svg>
+              {/* Number labels at lx/ly */}
+              {sortedHotspots.map((hotspot) => {
+                const explored = exploredIds.includes(hotspot.id)
+                const isNext = nextTarget?.id === hotspot.id
+                if (!explored && !isNext) return null
+                const isCurrent = isNext && !explored
+                return (
+                  <div
+                    key={`label-${hotspot.id}`}
+                    className={`xp-label-chip${explored ? ' xp-label-chip--done' : ''}${isCurrent ? ' xp-label-chip--current' : ''}`}
+                    style={{
+                      left: `${hotspot.lx ?? hotspot.x}%`,
+                      top: `${hotspot.ly ?? hotspot.y}%`,
+                      background: explored ? `${accentColor}cc` : accentColor,
+                    }}
+                  >
+                    {hotspot.displayOrder}
+                  </div>
+                )
+              })}
+              {/* Dot markers */}
               {sortedHotspots.map((hotspot) => {
                 const explored = exploredIds.includes(hotspot.id)
                 const active = activeHotspot?.id === hotspot.id

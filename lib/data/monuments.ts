@@ -25,6 +25,8 @@ export interface Hotspot {
   x: number
   y: number
   displayOrder: number
+  lx?: number          // label position x as % of image (for arrow display)
+  ly?: number          // label position y as % of image (for arrow display)
 }
 
 export interface Question {

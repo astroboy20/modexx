@@ -211,7 +211,7 @@ export default function CalibratePage() {
   function switchMonument(key: MonumentKey) { setSelected(key); setPoints([]); setRepositionId(null) }
 
   const output = points.map(p =>
-    `    { id: '${p.id}', label: '${p.label}', metaphor: '${p.metaphor}', chapter: 'Chapter ${String(p.order).padStart(2, '0')}', x: ${p.x}, y: ${p.y}, displayOrder: ${p.order} },`
+    `    { id: '${p.id}', label: '${p.label}', metaphor: '${p.metaphor}', chapter: 'Chapter ${String(p.order).padStart(2, '0')}', x: ${p.x}, y: ${p.y}, displayOrder: ${p.order}, lx: ${p.lx}, ly: ${p.ly} },`
   ).join('\n')
 
   return (
