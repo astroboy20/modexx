@@ -133,7 +133,9 @@ button.xp-trail-item:hover{background:var(--xp-tint)}
 @keyframes xp-pop{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}
 @media (prefers-reduced-motion:reduce){
   .xp-dot--live,.xp-scanned-icon,.xp-qr-card{animation:none}
-  .xp-marker,.xp-seg{transition:none}
+  .xp-marker{transition:none}
+  .xp-seg{transition:none}
+  .xp-marker.is-current{animation:none}
 }
 `
 
@@ -639,7 +641,17 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
   )
   const total = sortedHotspots.length
 
+  // found = hotspots unlocked in the DB (source of truth for progress)
   const [found, setFound] = useState<Set<string>>(new Set())
+  // read = hotspots whose story the user has actually opened this session
+  // We persist this in sessionStorage so it survives page refresh but not cross-device
+  const [read, setRead] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set()
+    try {
+      const raw = sessionStorage.getItem(`modexx_read_${monument.slug}`)
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set()
+    } catch { return new Set() }
+  })
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [connection, setConnection] = useState<Connection>('connecting')
@@ -655,11 +667,28 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
   const reloadRef = useRef<() => void>(() => {})
   const justUnlockedRef = useRef(justUnlockedId)
 
+  // Persist read set to sessionStorage whenever it changes
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      sessionStorage.setItem(`modexx_read_${monument.slug}`, JSON.stringify(Array.from(read)))
+    } catch { /* ignore */ }
+  }, [read, monument.slug])
+
+  function markRead(hotspotId: string) {
+    setRead((prev) => {
+      if (prev.has(hotspotId)) return prev
+      return new Set(prev).add(hotspotId)
+    })
+  }
+
   // Derived state: the clue to chase is always the first chapter not yet found.
   const nextHotspot = sortedHotspots.find((h) => !found.has(h.id))
   const scanDetectedHotspot = scanDetectedId ? sortedHotspots.find((h) => h.id === scanDetectedId) : undefined
   const focusHotspot = scanDetectedHotspot ?? nextHotspot
-  const allFound = !focusHotspot
+  const allFound = !nextHotspot  // all chapters are in the DB
+  // "Start challenge" only unlocks when every found chapter has been read
+  const allRead = allFound && sortedHotspots.every((h) => read.has(h.id))
 
   // Load progress from the database and listen for live scans
   useEffect(() => {
@@ -695,6 +724,12 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
         // If the participant already has at least chapter 1, skip the gate
         if (ids.size > 0) setGateScanned(true)
 
+        // If all chapters are already in the DB (returning user), seed the read set
+        // so they don't have to re-open every story just to unlock "Start challenge"
+        if (ids.size === sortedHotspots.length) {
+          setRead(new Set(sortedHotspots.map((h) => h.id)))
+        }
+
         // Arrived from the scanner page — handle both single and gate (all) unlocks
         const unlockId = justUnlockedRef.current
         if (unlockId) {
@@ -704,6 +739,7 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
             router.replace(`/monuments/${monument.slug}/explore`, { scroll: false })
           } else if (ids.has(unlockId)) {
             justUnlockedRef.current = undefined
+            markRead(unlockId)
             setStory({ id: unlockId, mode: 'reveal' })
             // Drop ?unlocked= so a refresh doesn't replay the reveal
             router.replace(`/monuments/${monument.slug}/explore`, { scroll: false })
@@ -772,6 +808,7 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
           const t = window.setTimeout(() => {
             if (!isMounted) return
             setScanDetectedId(null)
+            markRead(hotspot.id)
             setStory({ id: hotspot.id, mode: 'reveal' })
           }, 1200)
           timersRef.current.push(t)
@@ -807,9 +844,12 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
   const storyIdx = storyHotspot ? discovered.findIndex((h) => h.id === storyHotspot.id) : -1
 
   function closeStory() {
+    // Mark the story as read when closed (whether reveal or review mode)
+    if (storyHotspot) markRead(storyHotspot.id)
     setStory(null)
   }
   function stepStory(dir: -1 | 1) {
+    if (storyHotspot) markRead(storyHotspot.id)
     const target = discovered[storyIdx + dir]
     if (target) setStory({ id: target.id, mode: 'review' })
   }
@@ -1037,13 +1077,19 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
                   You&apos;ve unlocked every chapter of {monument.name}. Reread any of them below, or start the
                   challenge when you&apos;re ready.
                 </p>
-                <button
-                  type="button"
-                  className="xp-btn xp-btn--solid"
-                  onClick={() => router.push(`/challenge/${monument.slug}/instructions`)}
-                >
-                  Start the challenge <ArrowRight size={16} />
-                </button>
+                {allRead ? (
+                  <button
+                    type="button"
+                    className="xp-btn xp-btn--solid"
+                    onClick={() => router.push(`/challenge/${monument.slug}/instructions`)}
+                  >
+                    Start the challenge <ArrowRight size={16} />
+                  </button>
+                ) : (
+                  <p className="xp-muted" style={{ margin: 0, fontSize: 12 }}>
+                    Read all {total} chapters to unlock the challenge.
+                  </p>
+                )}
               </section>
             ) : (
               <section className="xp-card xp-card--active" aria-live="polite">
@@ -1094,7 +1140,7 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
                         <button
                           type="button"
                           className="xp-trail-item"
-                          onClick={() => setStory({ id: h.id, mode: 'review' })}
+                          onClick={() => { markRead(h.id); setStory({ id: h.id, mode: 'review' }) }}
                           aria-label={`Read ${h.chapter}: ${h.label}`}
                         >
                           <span className="xp-mark xp-mark--done"><Check size={14} /></span>
@@ -1138,24 +1184,8 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
                 style={{ objectFit: monument.portraitFit ?? 'cover' }}
               />
 
-              {/* Found chapters: small markers you can tap to reread */}
-              {discovered
-                .filter((h) => h.id !== focusHotspot?.id)
-                .map((h) => (
-                  <button
-                    key={h.id}
-                    type="button"
-                    className="xp-marker xp-marker--sm is-done"
-                    style={{ left: `${h.x}%`, top: `${h.y}%` }}
-                    onClick={() => setStory({ id: h.id, mode: 'review' })}
-                    aria-label={`Reread ${h.chapter}: ${h.label}`}
-                    title={h.label}
-                  >
-                    <Check size={14} />
-                  </button>
-                ))}
-
-              {/* The one marker to find — only the current hotspot is shown; locked ones stay hidden */}
+              {/* Only the CURRENT target marker shows on the portrait.
+                  Found and locked chapters have no marker — the portrait stays clean. */}
               {focusHotspot && (
                 <button
                   type="button"
@@ -1210,22 +1240,19 @@ function OrganizerExplore({ monument, accentColor }: { monument: Monument; accen
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null)
   const isComplete = exploredIds.length >= monument.hotspots.length
 
-  // Start from localStorage for instant render, then reconcile with the DB
+  // Load from DB only — localStorage was causing stale cross-device state
   useEffect(() => {
-    const localIds = getExploredHotspots(monument.slug)
-    setExploredIds(localIds)
-
     fetch(`/api/progress?monumentSlug=${monument.slug}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data?.progress) return
         const dbIds: string[] = data.progress.map((p: { hotspot_id: string }) => p.hotspot_id)
-        const merged = Array.from(new Set([...localIds, ...dbIds]))
-        merged.forEach((id) => markHotspotExplored(monument.slug, id))
-        setExploredIds(merged)
+        dbIds.forEach((id) => markHotspotExplored(monument.slug, id))
+        setExploredIds(dbIds)
       })
       .catch(() => {
-        /* non-fatal */
+        // Fallback to localStorage if DB fails
+        setExploredIds(getExploredHotspots(monument.slug))
       })
   }, [monument.slug])
 
