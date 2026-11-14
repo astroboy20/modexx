@@ -168,6 +168,274 @@ function LiveStatus({ connection }: { connection: Connection }) {
   )
 }
 
+// ── Chapter Card Deck ──────────────────────────────────────────────────────
+
+const CARD_STYLES = `
+/* ── Card deck wrapper ───────────────────────────────────────────── */
+.ccd-overlay{position:fixed;inset:0;z-index:900;display:grid;place-items:center;padding:20px;background:rgba(8,10,12,.75);backdrop-filter:blur(6px)}
+.ccd-scene{perspective:1200px;width:min(480px,100%)}
+.ccd-flipper{position:relative;transform-style:preserve-3d;animation:none}
+.ccd-flipper.spinning{animation:ccd-spin .65s cubic-bezier(.4,0,.2,1) forwards}
+.ccd-flipper.chapter-spinning{animation:ccd-spin-big .7s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes ccd-spin{0%{transform:rotateY(0deg)}100%{transform:rotateY(360deg)}}
+@keyframes ccd-spin-big{0%{transform:rotateY(0deg) scale(1)}40%{transform:rotateY(180deg) scale(.92)}100%{transform:rotateY(360deg) scale(1)}}
+.ccd-card{backface-visibility:hidden;border-radius:20px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.35);background:#fff}
+
+/* header */
+.ccd-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 0}
+.ccd-chapter-badge{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--xp-accent)}
+.ccd-close{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.07);color:inherit;cursor:pointer}
+.ccd-close:hover{background:rgba(0,0,0,.12)}
+
+/* body */
+.ccd-body{padding:18px 20px 14px;min-height:220px;display:grid;align-content:start;gap:10px}
+.ccd-headline{margin:0;font-size:17px;font-weight:700;color:#14181c;line-height:1.3}
+.ccd-date{margin:0;font-size:12px;color:#68736d}
+.ccd-text{margin:0;font-size:15px;line-height:1.65;color:#2b342e}
+
+/* dots */
+.ccd-dots{display:flex;justify-content:center;gap:7px;padding:12px 0 4px}
+.ccd-dot{width:8px;height:8px;border-radius:50%;background:#dde3de;transition:background .25s,transform .25s}
+.ccd-dot.active{background:var(--xp-accent);transform:scale(1.25)}
+
+/* footer */
+.ccd-footer{padding:14px 20px 20px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #edf0ee}
+.ccd-counter{font-size:12px;color:#68736d}
+.ccd-next-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:10px;border:0;background:var(--xp-accent);color:var(--xp-on);font:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:filter .15s}
+.ccd-next-btn:hover{filter:brightness(.9)}
+.ccd-next-btn:disabled{opacity:.5;cursor:not-allowed}
+.ccd-prev-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border-radius:10px;border:1px solid #dde3de;background:transparent;color:#2b342e;font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:filter .15s}
+.ccd-prev-btn:hover{background:#f5f7f5}
+.ccd-prev-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* chapter-transition overlay text */
+.ccd-chapter-done{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:260px;text-align:center;padding:28px 24px}
+.ccd-chapter-done h3{margin:0;font-size:20px;font-weight:700;color:#14181c}
+.ccd-chapter-done p{margin:0;font-size:14px;color:#68736d;line-height:1.6}
+
+@media(prefers-reduced-motion:reduce){
+  .ccd-flipper.spinning,.ccd-flipper.chapter-spinning{animation-duration:.01ms}
+}
+`
+
+/** Split a story body (double-newline separated) into up to 4 talking points. */
+function splitIntoTalkingPoints(body: string): string[] {
+  const paras = body.split('\n\n').map((p) => p.trim()).filter(Boolean)
+  if (paras.length <= 4) return paras
+  // Combine extras into the last bucket so we always have ≤4
+  const result = paras.slice(0, 3)
+  result.push(paras.slice(3).join('\n\n'))
+  return result
+}
+
+interface ChapterCardDeckProps {
+  monument: Monument
+  hotspot: Hotspot
+  story: Story | undefined
+  onClose: () => void
+  accentColor?: string
+  /** nav for review (browse) mode */
+  nav?: { onPrev: () => void; onNext: () => void; hasPrev: boolean; hasNext: boolean }
+  /** action for reveal mode */
+  action?: { label: string; onClick: () => void }
+}
+
+function ChapterCardDeck({ monument, hotspot, story, onClose, accentColor = '#168447', nav, action }: ChapterCardDeckProps) {
+  const talkingPoints = useMemo(
+    () => splitIntoTalkingPoints(story?.body || 'Story content — editorial review required.'),
+    [story?.body]
+  )
+  const total = talkingPoints.length
+
+  const [pointIndex, setPointIndex] = useState(0)
+  const [displayIndex, setDisplayIndex] = useState(0) // what's visually shown (swaps at mid-spin)
+  const [spinning, setSpinning] = useState(false)
+  const [chapterSpinning, setChapterSpinning] = useState(false)
+  const [spinKey, setSpinKey] = useState(0)  // bump to remount flipper and replay animation
+  // Wrap callbacks in { fn } so React doesn't treat them as state updaters
+  const [pendingAction, setPendingAction] = useState<{ fn: () => void; targetDisplayIdx?: number } | null>(null)
+  const midTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const flipperRef = useRef<HTMLDivElement>(null)
+  const nextBtnRef = useRef<HTMLButtonElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+
+  // Reset to card 0 when the hotspot changes
+  useEffect(() => {
+    setPointIndex(0)
+    setDisplayIndex(0)
+    setSpinning(false)
+    setChapterSpinning(false)
+    setPendingAction(null)
+    setSpinKey((k) => k + 1)
+    if (midTimerRef.current) clearTimeout(midTimerRef.current)
+  }, [hotspot.id])
+
+  // Lock scroll, focus trap
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    nextBtnRef.current?.focus()
+    return () => {
+      document.body.style.overflow = prevOverflow
+      prev?.focus?.()
+      if (midTimerRef.current) clearTimeout(midTimerRef.current)
+    }
+  }, [])
+
+  // Keyboard handling
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  /** Fire after the card spin ends — advance to the next point or chapter */
+  function handleSpinEnd() {
+    if (!spinning && !chapterSpinning) return
+    if (midTimerRef.current) clearTimeout(midTimerRef.current)
+    setSpinning(false)
+    setChapterSpinning(false)
+    setSpinKey((k) => k + 1)   // remount for next spin
+    if (pendingAction) {
+      const { fn, targetDisplayIdx } = pendingAction
+      setPendingAction(null)
+      // Sync displayIndex in case the mid-timer didn't fire (e.g. reduced-motion)
+      if (targetDisplayIdx !== undefined) setDisplayIndex(targetDisplayIdx)
+      fn()
+    }
+  }
+
+  /** Called when user presses Next on a talking-point card */
+  function handleNext() {
+    if (spinning || chapterSpinning) return
+    const isLastPoint = pointIndex >= total - 1
+
+    if (!isLastPoint) {
+      const nextIdx = pointIndex + 1
+      // Swap content at the halfway point (325ms ≈ half of 650ms)
+      midTimerRef.current = setTimeout(() => setDisplayIndex(nextIdx), 325)
+      setSpinning(true)
+      setPendingAction({ fn: () => setPointIndex(nextIdx), targetDisplayIdx: nextIdx })
+    } else {
+      // Last point — spin the whole chapter card then fire the chapter-level action
+      const chapterAction = action
+        ? action.onClick
+        : nav?.hasNext
+        ? nav.onNext
+        : onClose
+
+      setChapterSpinning(true)
+      setPendingAction({ fn: chapterAction })
+    }
+  }
+
+  function handlePrev() {
+    if (spinning || chapterSpinning) return
+    if (pointIndex > 0) {
+      const prevIdx = pointIndex - 1
+      midTimerRef.current = setTimeout(() => setDisplayIndex(prevIdx), 325)
+      setSpinning(true)
+      setPendingAction({ fn: () => setPointIndex(prevIdx), targetDisplayIdx: prevIdx })
+    } else if (nav?.hasPrev) {
+      nav.onPrev()
+    }
+  }
+
+  const isLastPoint = pointIndex >= total - 1
+  const isLastChapter = action ? false : !nav?.hasNext
+  const nextLabel = isLastPoint
+    ? action
+      ? action.label
+      : isLastChapter
+      ? 'Finish'
+      : 'Next Chapter'
+    : 'Next'
+
+  return (
+    <div
+      className="ccd-overlay"
+      style={scopeStyle(accentColor)}
+      ref={overlayRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${hotspot.chapter}: ${hotspot.label}`}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <style>{CARD_STYLES}</style>
+
+      <div className="ccd-scene">
+        <div
+          key={spinKey}
+          ref={flipperRef}
+          className={`ccd-flipper${spinning ? ' spinning' : ''}${chapterSpinning ? ' chapter-spinning' : ''}`}
+          onAnimationEnd={handleSpinEnd}
+        >
+          <div className="ccd-card">
+            {/* Header */}
+            <div className="ccd-header">
+              <span className="ccd-chapter-badge">
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--xp-accent)', display: 'inline-block' }} aria-hidden="true" />
+                {hotspot.chapter} · {hotspot.label}
+              </span>
+              <button className="ccd-close" onClick={onClose} aria-label="Close">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="ccd-body">
+              {displayIndex === 0 && (
+                <>
+                  <h2 className="ccd-headline">{story?.headline || hotspot.label}</h2>
+                  {story?.dateLabel && <p className="ccd-date">{story.dateLabel}</p>}
+                </>
+              )}
+              <p className="ccd-text">{talkingPoints[displayIndex]}</p>
+            </div>
+
+            {/* Progress dots */}
+            <div className="ccd-dots" aria-hidden="true">
+              {talkingPoints.map((_, i) => (
+                <span key={i} className={`ccd-dot${i === pointIndex ? ' active' : ''}`} />
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="ccd-footer">
+              <button
+                className="ccd-prev-btn"
+                onClick={handlePrev}
+                disabled={pointIndex === 0 && !nav?.hasPrev}
+                aria-label={pointIndex === 0 ? 'Previous chapter' : 'Previous point'}
+              >
+                <ChevronLeft size={16} />
+                {pointIndex === 0 ? 'Prev' : 'Back'}
+              </button>
+              <span className="ccd-counter" aria-live="polite">
+                {pointIndex + 1} / {total}
+              </span>
+              <button
+                ref={nextBtnRef}
+                className="ccd-next-btn"
+                onClick={handleNext}
+                disabled={spinning || chapterSpinning}
+                aria-label={nextLabel}
+              >
+                {nextLabel}
+                {isLastPoint ? <ArrowRight size={16} /> : <ChevronRight size={16} />}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Story Panel ────────────────────────────────────────────────────────────
 
 interface StoryPanelProps {
@@ -896,11 +1164,12 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
       )}
 
       {story && storyHotspot && (
-        <StoryPanel
+        <ChapterCardDeck
           key={storyHotspot.id}
           monument={monument}
           hotspot={storyHotspot}
           story={monument.stories.find((s) => s.hotspotId === storyHotspot.id)}
+          accentColor={accentColor}
           onClose={closeStory}
           {...(story.mode === 'reveal'
             ? { action: { label: nextHotspot ? 'Continue to next clue' : 'Finish', onClick: closeStory } }
@@ -1111,11 +1380,12 @@ function OrganizerExplore({ monument, accentColor }: { monument: Monument; accen
       </div>
 
       {activeHotspot && (
-        <StoryPanel
+        <ChapterCardDeck
           key={activeHotspot.id}
           monument={monument}
           hotspot={activeHotspot}
           story={activeStory}
+          accentColor={accentColor}
           onClose={() => setActiveHotspot(null)}
           nav={{
             onPrev: () => navigatePanel('prev'),
