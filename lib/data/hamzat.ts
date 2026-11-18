@@ -32,9 +32,9 @@ export const hamzatMonument: Monument = {
       body: "Dr. Kadri Obafemi Hamzat — commonly known as Femi Hamzat — was born on 19 September 1964 in Lagos, Nigeria. His father, Oba Mufutau Olatunji Hamzat, was involved in Lagos public life: biographical accounts report he served in the Lagos State House of Assembly and as Commissioner for Transportation between 1979 and 1983, and was associated with the Alliance for Democracy.\n\nThe name Obafemi was chosen in reference to Chief Obafemi Awolowo, a detail that places the family's roots within the Yoruba progressive political tradition. Growing up in Lagos, Hamzat was exposed to civic and public-affairs thinking from an early age.\n\nFamily background provides context for early influences; Hamzat's own career and public record are what this monument documents.",
       dateLabel: '19 September 1964',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Lagos,_Nigeria.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_skyline.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/2010_Lagos_Nigeria_by_Rainer_Wozny_5342608955.jpg'
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Femi_Hamzat_at_the_Lagos_Hackathon_2020_03.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Femi_Hamzat_at_the_Lagos_Hackathon_2020_01.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Lagos,_Nigeria.jpg'
       ],
       sources: [
         { title: 'Hamzat professional profile', publisher: 'KOH Lagos', url: 'https://kohlagos.com/' },
@@ -52,7 +52,7 @@ export const hamzatMonument: Monument = {
       pointImages: [
         'https://commons.wikimedia.org/wiki/Special:FilePath/UNIVERSITY_OF_IBADAN_Main_Gate_Agbowo,_Ibadan_2.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Cranfield_University_entrance_Main_reception_and_logo.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Federal_Secretariat_Complex.jpg'
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Femi_Hamzat_at_the_Lagos_Hackathon_2020_02.jpg'
       ],
       sources: [
         { title: 'Hamzat professional profile', publisher: 'KOH Lagos', url: 'https://kohlagos.com/' },
@@ -69,9 +69,9 @@ export const hamzatMonument: Monument = {
       dateLabel: '1964 — present',
       pointImages: [
         'https://commons.wikimedia.org/wiki/Special:FilePath/UNIVERSITY_OF_IBADAN_Main_Gate_Agbowo,_Ibadan_2.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Cranfield_University_entrance_Main_reception_and_logo.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Femi_Hamzat_at_the_Lagos_Hackathon_2020_04.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Lekki_link_bridge_at_night.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_skyline.jpg'
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Femi_Hamzat_at_the_Lagos_Hackathon_2020_05.jpg'
       ],
       sources: [
         { title: 'Hamzat unveiled as running mate', publisher: 'TheCable', url: 'https://www.thecable.ng/hamzat-unveiled-as-sanwo-olus-running-mate/' },
@@ -105,7 +105,7 @@ export const hamzatMonument: Monument = {
       body: "Hamzat's public career has been defined by institutional roles rather than elected politics until the 2019 deputy governorship. As a commissioner twice over — first Science and Technology, then Works and Infrastructure — he operated within the Lagos State Executive Council, contributing to policy, budget priorities and programme implementation.\n\nAs Deputy Governor from 29 May 2019, he serves within the joint Sanwo-Olu administration. The deputy governor's role in Nigeria's state government system is defined by the assignments delegated by the governor. Rail, road, health and housing programmes during 2019-2027 are outputs of the Sanwo-Olu administration or Lagos State Government unless evidence establishes Hamzat's specific operational responsibility for a given initiative.\n\nAt the November 2026 governorship debate, Hamzat fielded questions on flooding, transport, housing, health and cost of living — defending aspects of the incumbent administration's record and outlining his own proposals.",
       dateLabel: '2005 — present',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Federal_Secretariat_Complex.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Femi_Hamzat_at_the_Lagos_Hackathon_2020_06.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Mile2station-best.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_%22go_slow%22_(gridlock).jpg'
       ],
@@ -123,9 +123,9 @@ export const hamzatMonument: Monument = {
       body: "In 2018 Hamzat was an APC Lagos governorship aspirant. On 29 September 2018 he withdrew before the party primary and publicly asked his supporters to back Babajide Sanwo-Olu. On 4 November 2018 he was formally unveiled as Sanwo-Olu's running mate — a partnership that would lead to two election victories.\n\nThe APC ticket won the 9 March 2019 Lagos governorship election. After re-election in 2023, the result was challenged in the courts. The Court of Appeal affirmed the return of Sanwo-Olu and Hamzat in November 2023; the Supreme Court dismissed the relevant appeal in January 2024.\n\nIn April 2026 Governor Sanwo-Olu publicly backed Hamzat's governorship ambition. The Lagos APC Governance Advisory Council adopted him as its consensus aspirant, and President Bola Ahmed Tinubu publicly endorsed him. INEC's final list subsequently recorded HAMZAT KADRI OBAFEMI as the APC governorship candidate and JAMES DAMILOLA SONAYON as running mate. The scheduled election date is 6 February 2027.\n\nA citizenship eligibility challenge raised during the 2023 petition proceedings — in which a witness testified about US naturalisation forms — did not succeed in court. The Supreme Court found no credible evidence that Hamzat had renounced Nigerian citizenship. Hamzat's office denied the claims.",
       dateLabel: '2018 — 2027',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_Traffic.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_skyline.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Lagos,_Nigeria.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Femi_Hamzat_at_the_Lagos_Hackathon_2020_07.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Babajide_Sanwaolu_2019.jpeg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Femi_Hamzat_at_the_Lagos_Hackathon_2020_08.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Federal_High_Court_Complex_Abuja.jpg'
       ],
       sources: [
@@ -148,7 +148,7 @@ export const hamzatMonument: Monument = {
         'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_State_Teaching_Hospital_and_College_of_Medicine.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Entrance_of_Lagos_State_Teaching_Hospital.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Kings_College,_Lagos_01.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Lagos,_Nigeria.jpg'
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Femi_Hamzat_at_the_Lagos_Hackathon_2020_09.jpg'
       ],
       sources: [
         { title: 'Hamzat unveils 100-point manifesto', publisher: 'Premium Times', url: 'https://www.premiumtimesng.com/news/top-news/921680-hamzat-unveils-100-point-manifesto-pledges-child-protection-agency-state-wealth-fund-2.html' },
@@ -188,7 +188,7 @@ export const hamzatMonument: Monument = {
         'https://commons.wikimedia.org/wiki/Special:FilePath/Eko_Atlantic_(Lagos)_Skyline.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_Street_at_high_tide.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_%22go_slow%22_(gridlock).jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Lagos,_Nigeria.jpg'
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Femi_Hamzat_at_the_Lagos_Hackathon_2020_10.jpg'
       ],
       sources: [
         { title: '2027 Lagos governorship debate', publisher: 'Channels TV', url: 'https://www.channelstv.com/2026/11/08/lagos-candidates-disagree-on-flooding-traffic-housing-education-at-governorship-debate/' },
@@ -205,8 +205,8 @@ export const hamzatMonument: Monument = {
       body: "Dr. Femi Hamzat's public career spans more than two decades of institutional roles: two commissioner portfolios under different governors, a federal advisory post, and two terms as Lagos Deputy Governor. He is the APC governorship candidate for the 6 February 2027 election, as confirmed by INEC's final list.\n\nHis 2027 manifesto, The Lagos Promise (Ìlérí Èkó), is structured around seven P.R.O.M.I.S.E. pillars and 100 pledges — described by the campaign as 87 firm commitments and 13 aspirations. The Hamzat Compact within the manifesto proposes service charters, public scorecards and published response timelines for citizen complaints.\n\nPublic accountability questions include: which projects were directly within his portfolio versus delivered by the wider state administration? What baselines, deadlines and funding sources accompany each pledge? How do proposals reach low-income residents, informal workers and areas beyond the Island-Lekki axis? Who independently verifies the promised scorecards?\n\nThis monument presents documented biography, public appointments, government outputs, and campaign proposals separately — consistent with the Modiex editorial standard.",
       dateLabel: '2019 — 2027',
       pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Femi_Hamzat_at_the_Lagos_Hackathon_2020_01.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Lekki_link_bridge_at_night.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_skyline.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Above_View_of_Lagos_Business_District,_Lagos_Island._Nigeria,_West_Africa_15th_March,_2017_Landscape_(8).jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Eko_Atlantic_(Lagos)_Skyline.jpg'
       ],

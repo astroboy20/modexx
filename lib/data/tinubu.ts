@@ -32,8 +32,8 @@ export const tinubuMonument: Monument = {
       body: 'On 29 May 2023, Bola Ahmed Tinubu was inaugurated as the 16th President of Nigeria at Eagle Square in Abuja, succeeding Muhammadu Buhari. His inauguration speech immediately signalled bold economic reform, most notably with the declaration that the fuel subsidy was "gone."\n\nHis election victory in February 2023 was subsequently challenged by rival candidates Atiku Abubakar (PDP) and Peter Obi (Labour Party). The Presidential Election Petition Court upheld Tinubu\'s victory in October 2023, and subsequent appeals were dismissed by the Supreme Court.',
       dateLabel: '29 May 2023',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/The_Overview_of_Eagle_Square_Abuja.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Federal_High_Court_Complex_Abuja.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Bola_A_Tinubu_presidential_portrait_2023.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Federal_High_Court_Complex_Abuja.jpg'
       ],
       sources: [
         { title: "Tinubu inaugurated as Nigeria's President", publisher: 'BBC News', url: 'https://www.bbc.com/news/world-africa-65768806' },
@@ -49,8 +49,8 @@ export const tinubuMonument: Monument = {
       body: 'The removal of the fuel subsidy, announced on inauguration day, was one of the most consequential early decisions. The subsidy had cost the federal government hundreds of billions of naira annually. Its removal led to an immediate rise in petrol prices across Nigeria.\n\nAlongside this, the CBN unified multiple foreign exchange windows, allowing the naira to float more freely. This led to a sharp depreciation in mid-2023. The government introduced palliative measures and a consumer credit scheme to cushion the impact on lower-income households.',
       dateLabel: 'June 2023 — ongoing',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Petrol_station_in_Ilorin_Kwara_Nigeria.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Central_Bank_of_Nigeria.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Headquarters_of_NNPC_Nigeria.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Central_bank_nigeria.jpg'
       ],
       sources: [
         { title: 'Nigeria scraps fuel subsidies', publisher: 'Financial Times', url: 'https://www.ft.com/' },
@@ -66,10 +66,10 @@ export const tinubuMonument: Monument = {
       body: '29 May 2023: Inauguration and fuel subsidy removal.\n\nJune 2023: Foreign exchange unification policy. Naira begins to depreciate.\n\nAugust 2023: Student Loan Act signed into law.\n\nOctober 2023: Presidential Election Petition Court upholds Tinubu\'s victory.\n\nFebruary 2024: State of emergency declared in Rivers State.\n\nJuly 2024: New minimum wage of ₦70,000 signed into law.\n\n2024–2025: Infrastructure commitments and CNG transport initiatives ongoing.',
       dateLabel: '2023 — present',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/EagleSquareAbuja.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Bola_A_Tinubu_presidential_portrait_2023.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Central_bank_nigeria.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/University_of_Lagos_(Unilag).jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Feder_Secretariat_Building_Abuja_Nigeria.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Feder_Secretariat_Building_Abuja_Nigeria.jpg'
       ],
       sources: [
         { title: 'Nigeria events timeline 2023–2024', publisher: 'Premium Times', url: 'https://www.premiumtimesng.com/' },
@@ -84,8 +84,8 @@ export const tinubuMonument: Monument = {
       body: "President Tinubu's cabinet was announced in stages. He initially assumed the role of Minister of Petroleum Resources himself. Wale Edun was appointed Finance Minister. Cabinet members were drawn from across Nigeria's geopolitical zones in line with constitutional federal character provisions.\n\nThe Renewed Hope Agenda outlined commitments to infrastructure, security, education, and economic growth. The National Economic Council and economic management teams were reconstituted, and the administration engaged the World Bank and IMF on Nigeria's reform path.",
       dateLabel: 'August 2023 — ongoing',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Headquarters_of_NNPC_Nigeria.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Aso_rock_presidential_Villa.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Foreign_Secretary_James_Cleverly_visits_Nigeria_-_53088283417.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Aso_rock_presidential_Villa.jpg'
       ],
       sources: [
         { title: "Tinubu's cabinet composition", publisher: 'Vanguard', url: 'https://www.vanguardngr.com/' },
@@ -101,7 +101,7 @@ export const tinubuMonument: Monument = {
       dateLabel: '2023 — ongoing',
       pointImages: [
         'https://commons.wikimedia.org/wiki/Special:FilePath/Unilag_entrance_view_04.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Federal_Secretariat_Complex.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Bola_Ahmed_Adekunle_Tinubu,_President_of_Nigeria,_in_Abuja_(2024)_(cropped).jpg'
       ],
       sources: [
         { title: 'Student Loan Act signed', publisher: 'Channels Television', url: 'https://www.channelstv.com/' },
@@ -117,8 +117,8 @@ export const tinubuMonument: Monument = {
       body: 'Bola Ahmed Tinubu was born on 29 March 1952. He studied Accounting at the University of Chicago and worked at Mobil Oil before entering politics. He served as a senator for Lagos West (1992–1993) and was elected Governor of Lagos State in 1999, re-elected in 2003.\n\nHis tenure as governor is credited with fiscal reforms that dramatically increased Lagos\'s internally generated revenue. His political network was central to forming the APC in 2013, the merger that brought the party to national power in 2015.',
       dateLabel: 'Historical background',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Rockefeller_Memorial_Chapel,_University_of_Chicago,_59th_Street_and_Woodlawn_Avenue,_Hyde_Park,_Chicago,_IL_-_54213796654.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_skyline.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Asiwaju_Bola_Ahmed_Tinubu_(5980497975)_(cropped).jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Bola_Ahmed_Tinubu_in_red_outfit.jpg'
       ],
       sources: [
         { title: 'Profile: Bola Tinubu', publisher: 'BBC News', url: 'https://www.bbc.com/news/world-africa-65640678' },
@@ -134,7 +134,7 @@ export const tinubuMonument: Monument = {
       dateLabel: '2023 — ongoing',
       pointImages: [
         'https://commons.wikimedia.org/wiki/Special:FilePath/Kings_College,_Lagos_01.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Entrance_of_Lagos_State_Teaching_Hospital.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Entrance_of_Lagos_State_Teaching_Hospital.jpg'
       ],
       sources: [
         { title: 'Renewed Hope social programmes', publisher: 'Daily Trust', url: 'https://dailytrust.com/' },
@@ -149,8 +149,8 @@ export const tinubuMonument: Monument = {
       body: 'The economic reforms created a chain of policy interactions. Fuel subsidy removal increased government revenue but raised transportation and food logistics costs, feeding inflation. This put pressure on the minimum wage, ultimately resulting in the ₦70,000 minimum wage of 2024.\n\nForeign exchange unification affected import costs, impacting manufacturing, construction, and basic goods prices. CBN interest rate increases aimed to contain inflation while also raising borrowing costs for businesses — illustrating how macroeconomic decisions ripple across institutions and households.',
       dateLabel: '2023 — ongoing',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/The_Busy_and_traffic_road_of_Lagos,_Nigeria.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Central_Bank_of_Nigeria.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Petrol_station_in_Ilorin_Kwara_Nigeria.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Central_Bank_of_Nigeria.jpg'
       ],
       sources: [
         { title: 'Nigeria inflation and policy linkages', publisher: 'Nairametrics', url: 'https://nairametrics.com/' },
@@ -166,7 +166,7 @@ export const tinubuMonument: Monument = {
       dateLabel: '2023 — ongoing',
       pointImages: [
         'https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Marina,_Lagos_Island_East,_Lagos-Nigeria.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Mile2station-best.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Mile2station-best.jpg'
       ],
       sources: [
         { title: 'Lagos-Calabar coastal road project', publisher: 'The Guardian Nigeria', url: 'https://guardian.ng/' },
@@ -181,8 +181,8 @@ export const tinubuMonument: Monument = {
       body: 'The Tinubu presidency opened with an economic reform agenda that removed two major market distortions in its first days. By mid-2024, inflation remained elevated and the naira had weakened substantially, though the government pointed to improved fiscal revenues and early foreign investor interest as indicators of progress.\n\nPolitical challenges included the Rivers State crisis, ongoing security pressures, and coalition management within the APC. Outstanding issues include the pace of infrastructure delivery, the reach of social protection programmes, and whether reform costs are being distributed equitably across Nigerian society.',
       dateLabel: '2023 — ongoing',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Nigerian_currency.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Central_business_district_abuja.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Prime_Minister_Keir_Starmer_meets_Bola_Ahmed_Tinubu.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Bola_Tinubu_portrait_(cropped).jpg'
       ],
       sources: [
         { title: 'Nigeria economic outlook', publisher: 'World Bank', url: 'https://www.worldbank.org/en/country/nigeria' },

@@ -56,7 +56,7 @@ export const oyebanjiMonument: Monument = {
       pointImages: [
         'https://commons.wikimedia.org/wiki/Special:FilePath/FACULTY_OF_EDUCATION,_UNIVERSITY_OF_IBADAN,_IBADAN,_NIGERIA.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Nigeria_Ekiti_State_map.png',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Mountain_view_Ilawe_Ekiti,_Ekiti_State.jpg'
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ilawe_-_Ekiti.jpg'
       ],
       sources: [
         { title: 'Ekiti State Six Pillars — Second-Year State of the State Address', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
@@ -94,7 +94,7 @@ export const oyebanjiMonument: Monument = {
       body: 'The administration\'s stated guiding theme is "shared prosperity" — Ekiti as a state where residents and communities can benefit from opportunity, peace, progress, dignity, health and safety, with integrity as a public value. The six policy pillars align with the Ekiti State Development Plan 2021–2050.\n\nGovernance priorities included public-sector performance, transparency, fiscal discipline, and citizen engagement. The administration published medium-term sector strategies and a Citizens\' Budget — a simplified version of the state budget intended to make public finance accessible to ordinary residents.\n\nThe 2024 Citizens\' Accountability Report recorded total revenue of ₦442.141 billion actual against a ₦372.154 billion budget. Internally generated revenue reached ₦34.734 billion — above target but representing 9 per cent year-on-year growth. Debt service was ₦69.574 billion actual against a ₦19 billion budget, a major variance that the state\'s fiscal documents note requires careful reading alongside debt-stock and exchange-rate adjustment lines.',
       dateLabel: '2022 — ongoing',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Ilawe_-_Ekiti.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Odo_Ado_Roundabout_,_Ado_Ekiti,_Ekiti_State.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Ekiti_state_internal_revenue_house,_Ado-ekiti2.jpg'
       ],
       sources: [
@@ -113,8 +113,8 @@ export const oyebanjiMonument: Monument = {
       dateLabel: '2022 — 2026',
       pointImages: [
         'https://commons.wikimedia.org/wiki/Special:FilePath/Feder_Secretariat_Building_Abuja_Nigeria.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Odo_Ado_Roundabout_,_Ado_Ekiti,_Ekiti_State.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Kings_College,_Lagos_01.jpg'
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ado_Ekiti,_Nigeria.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ikole_ekiti_nigeria.jpg'
       ],
       sources: [
         { title: 'Office of the Governor — Profile of the Governor', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },

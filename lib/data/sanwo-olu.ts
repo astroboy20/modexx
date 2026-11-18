@@ -32,8 +32,8 @@ export const sanwoOluMonument: Monument = {
       body: "Babajide Olusola Sanwo-Olu was born on 25 June 1965 in Lagos. A business professional and public administrator by background, he served in various capacities before his governorship, including as Commissioner for Economic Planning and Budget and Commissioner for Commerce and Industry under Governor Bola Tinubu.\n\nSanwo-Olu won the Lagos State governorship election in March 2019 under the APC, defeating the PDP candidate Jimi Agbaje. He was inaugurated as Governor on 29 May 2019. He was re-elected in 2023, winning a second term. His administration operates from Government House, Alausa, the state capital complex in Ikeja.",
       dateLabel: '29 May 2019',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/University_of_Lagos_Main_Entrance.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_skyline.jpg'
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Babajide_Sanwaolu_2019.jpeg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Babajide_Sanwo-Olu_(2024)_(cropped).jpg'
       ],
       sources: [
         { title: 'Sanwo-Olu inaugurated as Lagos Governor', publisher: 'Vanguard', url: 'https://www.vanguardngr.com/' },
@@ -48,7 +48,7 @@ export const sanwoOluMonument: Monument = {
       body: "The Sanwo-Olu administration organised its development priorities around the THEMES agenda: Traffic Management and Transportation, Health and Environment, Education and Technology, Making Lagos a 21st Century Economy, Entertainment and Tourism, and Security and Governance.\n\nThis framework was intended to guide policy, budget priorities, and public communication. The THEMES pillars provided a structured lens for evaluating different areas of governance — from the Blue Line rail to the Lagos Smart City initiative. The framework was cited in budget presentations and official communications throughout the administration.",
       dateLabel: '2019 — ongoing',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Above_View_of_Lagos_Business_District,_Lagos_Island._Nigeria,_West_Africa_15th_March,_2017_Landscape_(8).jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Gov._Sanwo-Olu_speaking_at_an_event.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Mile2station-best.jpg'
       ],
       sources: [
@@ -64,10 +64,10 @@ export const sanwoOluMonument: Monument = {
       body: '29 May 2019: Inauguration as Governor of Lagos State.\n\nMarch 2020: Covid-19 response — Lagos becomes the epicentre of Nigeria\'s outbreak. Lockdown measures implemented.\n\nOctober 2020: #EndSARS protests. Demonstrations against police brutality culminate in the Lekki toll gate incident on 20 October 2020. A Judicial Panel of Inquiry was subsequently established.\n\n2021: Continued infrastructure and housing initiatives. Abuja-Lagos highway rehabilitation discussions.\n\n2022: Blue Line rail project construction progresses.\n\nMarch 2023: Re-elected as Governor for a second term.\n\n2023: Lagos Blue Line rail inaugurated, connecting Marina to Mile 2. First phase completed.\n\n2024: Red Line rail project continuing. Various road and drainage projects across the state.',
       dateLabel: '2019 — present',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_skyline.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Babajide_Sanwaolu_2019.jpeg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Protesters_at_the_endSARS_protest_in_Lagos,_Nigeria_92.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Mile2station-best.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_%22go_slow%22_(gridlock).jpg'
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Babajide_Sanwo-Olu_(2024)_(cropped).jpg'
       ],
       sources: [
         { title: 'Lagos governance timeline', publisher: 'Premium Times', url: 'https://www.premiumtimesng.com/' },
@@ -82,8 +82,8 @@ export const sanwoOluMonument: Monument = {
       body: "The Sanwo-Olu administration managed a state with a GDP larger than many African nations, relying heavily on internally generated revenue. Key administrative priorities included expanding Lagos's tax base, improving civil service delivery, and reforming state-owned enterprises.\n\nThe state government launched digital platforms for revenue collection (e-ticketing, online tax payments) and land administration. The Lagos State Residents Registration Agency (LASRRA) was expanded. Budget management and transparency were areas where civil society continued to call for improvement in monitoring public expenditure outcomes.",
       dateLabel: '2019 — ongoing',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Marina,_Lagos_Island_East,_Lagos-Nigeria.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Above_View_of_Lagos_Business_District,_Lagos_Island._Nigeria,_West_Africa_15th_March,_2017_Landscape_(8).jpg'
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Above_View_of_Lagos_Business_District,_Lagos_Island._Nigeria,_West_Africa_15th_March,_2017_Landscape_(8).jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Babajide_Sanwaolu_at_Lagos_Hackathon.jpg'
       ],
       sources: [
         { title: 'Lagos State budget and administration', publisher: 'BudgIT', url: 'https://budgit.org/' },
@@ -115,8 +115,8 @@ export const sanwoOluMonument: Monument = {
       body: "Babajide Sanwo-Olu holds a Bachelor's degree from the University of Lagos and an MBA from the University of Lagos Business School. He completed an Advanced Management Programme at INSEAD, France.\n\nBefore politics, he worked in banking and business. He served as Lagos State Commissioner for Economic Planning and Budget and Commissioner for Commerce, Industry and Cooperatives under Governor Bola Tinubu. He later served as Group Managing Director of the Lagos State Development and Property Corporation (LSDPC).\n\nHe is known for his relatively accessible public communication style and his engagement with youth-focused governance discussions.",
       dateLabel: 'Historical background',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Unilag_entrance_view_04.jpg',
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Building-in-victoria-island-lagos.jpg'
+        'https://commons.wikimedia.org/wiki/Special:FilePath/University_of_Lagos_Main_Entrance.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/UK_Foreign_Secretary_David_Lammy_meets_the_Governor_of_Lagos_State,_Babajide_Sanwo-Olu_-_54117199152.jpg'
       ],
       sources: [
         { title: 'Profile: Babajide Sanwo-Olu', publisher: 'The Guardian Nigeria', url: 'https://guardian.ng/' },
@@ -180,7 +180,7 @@ export const sanwoOluMonument: Monument = {
       body: "The Sanwo-Olu governorship has operated across an unusually turbulent period — navigating a global pandemic, the social upheaval of #EndSARS, economic pressures from federal policy reforms, and the ongoing infrastructural demands of Africa's largest city.\n\nMilestones include the Blue Line rail inauguration, significant digital revenue administration improvements, COVID-19 response leadership, and a second election victory in 2023.\n\nOngoing challenges include traffic congestion, flooding, housing affordability, youth unemployment, and the implementation gap between announced projects and verified deliveries. The administration's record will ultimately be judged by the tangible improvement in the daily experience of the estimated 20+ million residents of Lagos State.",
       dateLabel: '2019 — ongoing',
       pointImages: [
-        'https://commons.wikimedia.org/wiki/Special:FilePath/Lekki-ikoyi_link_bridge_(20500110192).jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Gov._Sanwaolu_at_the_2021_AMA_Award_01.jpg',
         'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_%22go_slow%22_(gridlock).jpg'
       ],
       sources: [
