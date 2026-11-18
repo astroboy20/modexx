@@ -179,14 +179,37 @@ interface ChapterCardDeckProps {
   action?: { label: string; onClick: () => void }
 }
 
+// Build an interleaved sequence of slides: [text0, image0, text1, image1, ...]
+// A slide is either { type: 'text', pointIdx: number } or { type: 'image', src: string, pointIdx: number }
+type Slide =
+  | { type: 'text'; pointIdx: number }
+  | { type: 'image'; src: string; pointIdx: number }
+
+function buildSlides(talkingPoints: string[], story: Story | undefined): Slide[] {
+  const images: string[] = story?.pointImages ?? (story?.cardImage ? [story.cardImage] : [])
+  const slides: Slide[] = []
+  for (let i = 0; i < talkingPoints.length; i++) {
+    slides.push({ type: 'text', pointIdx: i })
+    // insert image after this point if one exists for this index
+    // if fewer images than points, the last image repeats for remaining points
+    // if no images at all, skip
+    if (images.length > 0) {
+      const src = images[i] ?? images[images.length - 1]
+      slides.push({ type: 'image', src, pointIdx: i })
+    }
+  }
+  return slides
+}
+
 function ChapterCardDeck({ monument, hotspot, story, onClose, accentColor = '#168447', nav, action }: ChapterCardDeckProps) {
   const talkingPoints = useMemo(() => splitIntoTalkingPoints(story?.body || 'Story content — editorial review required.'), [story?.body])
-  // If a cardImage is provided, we add an extra "image" slide after all talking points
-  const hasImageSlide = !!story?.cardImage
-  const total = talkingPoints.length + (hasImageSlide ? 1 : 0)
-  const isImageSlide = (idx: number) => hasImageSlide && idx === talkingPoints.length
-  const [pointIndex, setPointIndex] = useState(0)
-  const [displayIndex, setDisplayIndex] = useState(0)
+  const slides = useMemo(() => buildSlides(talkingPoints, story), [talkingPoints, story])
+  const total = slides.length
+  // pointDotCount = number of text slides (for the dot indicators)
+  const textSlides = useMemo(() => slides.filter((s) => s.type === 'text'), [slides])
+
+  const [slideIndex, setSlideIndex] = useState(0)
+  const [displaySlideIndex, setDisplaySlideIndex] = useState(0)
   const [spinning, setSpinning] = useState(false)
   const [chapterSpinning, setChapterSpinning] = useState(false)
   const [spinKey, setSpinKey] = useState(0)
@@ -195,7 +218,7 @@ function ChapterCardDeck({ monument, hotspot, story, onClose, accentColor = '#16
   const nextBtnRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    setPointIndex(0); setDisplayIndex(0); setSpinning(false); setChapterSpinning(false)
+    setSlideIndex(0); setDisplaySlideIndex(0); setSpinning(false); setChapterSpinning(false)
     setPendingAction(null); setSpinKey((k) => k + 1)
     if (midTimerRef.current) clearTimeout(midTimerRef.current)
   }, [hotspot.id])
@@ -221,19 +244,19 @@ function ChapterCardDeck({ monument, hotspot, story, onClose, accentColor = '#16
     if (pendingAction) {
       const { fn, targetDisplayIdx } = pendingAction
       setPendingAction(null)
-      if (targetDisplayIdx !== undefined) setDisplayIndex(targetDisplayIdx)
+      if (targetDisplayIdx !== undefined) setDisplaySlideIndex(targetDisplayIdx)
       fn()
     }
   }
 
   function handleNext() {
     if (spinning || chapterSpinning) return
-    const isLastPoint = pointIndex >= total - 1
-    if (!isLastPoint) {
-      const nextIdx = pointIndex + 1
-      midTimerRef.current = setTimeout(() => setDisplayIndex(nextIdx), 325)
+    const isLast = slideIndex >= total - 1
+    if (!isLast) {
+      const nextIdx = slideIndex + 1
+      midTimerRef.current = setTimeout(() => setDisplaySlideIndex(nextIdx), 325)
       setSpinning(true)
-      setPendingAction({ fn: () => setPointIndex(nextIdx), targetDisplayIdx: nextIdx })
+      setPendingAction({ fn: () => setSlideIndex(nextIdx), targetDisplayIdx: nextIdx })
     } else {
       const chapterAction = action ? action.onClick : nav?.hasNext ? nav.onNext : onClose
       setChapterSpinning(true)
@@ -243,17 +266,21 @@ function ChapterCardDeck({ monument, hotspot, story, onClose, accentColor = '#16
 
   function handlePrev() {
     if (spinning || chapterSpinning) return
-    if (pointIndex > 0) {
-      const prevIdx = pointIndex - 1
-      midTimerRef.current = setTimeout(() => setDisplayIndex(prevIdx), 325)
+    if (slideIndex > 0) {
+      const prevIdx = slideIndex - 1
+      midTimerRef.current = setTimeout(() => setDisplaySlideIndex(prevIdx), 325)
       setSpinning(true)
-      setPendingAction({ fn: () => setPointIndex(prevIdx), targetDisplayIdx: prevIdx })
+      setPendingAction({ fn: () => setSlideIndex(prevIdx), targetDisplayIdx: prevIdx })
     } else if (nav?.hasPrev) { nav.onPrev() }
   }
 
-  const isLastPoint = pointIndex >= total - 1
+  const isLast = slideIndex >= total - 1
   const isLastChapter = action ? false : !nav?.hasNext
-  const nextLabel = isLastPoint ? (action ? action.label : isLastChapter ? 'Finish' : 'Next Chapter') : 'Next'
+  const nextLabel = isLast ? (action ? action.label : isLastChapter ? 'Finish' : 'Next Chapter') : 'Next'
+
+  const currentSlide = slides[displaySlideIndex] ?? slides[0]
+  // Active dot = the pointIdx of the current slide's underlying text point
+  const activeDotIdx = currentSlide.pointIdx
 
   return (
     <div className="ccd-overlay" style={scopeStyle(accentColor)} role="dialog" aria-modal="true" aria-label={`${hotspot.chapter}: ${hotspot.label}`} onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
@@ -269,36 +296,42 @@ function ChapterCardDeck({ monument, hotspot, story, onClose, accentColor = '#16
               <button className="ccd-close" onClick={onClose} aria-label="Close"><X size={16} /></button>
             </div>
             <div className="ccd-body">
-              {displayIndex === 0 && !isImageSlide(displayIndex) && (
+              {currentSlide.type === 'text' ? (
                 <>
-                  <h2 className="ccd-headline">{story?.headline || hotspot.label}</h2>
-                  {story?.dateLabel && <p className="ccd-date">{story.dateLabel}</p>}
+                  {currentSlide.pointIdx === 0 && (
+                    <>
+                      <h2 className="ccd-headline">{story?.headline || hotspot.label}</h2>
+                      {story?.dateLabel && <p className="ccd-date">{story.dateLabel}</p>}
+                    </>
+                  )}
+                  <p className="ccd-text">{talkingPoints[currentSlide.pointIdx]}</p>
                 </>
-              )}
-              {isImageSlide(displayIndex) ? (
+              ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '4px 0' }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={story!.cardImage}
-                    alt={story?.headline || hotspot.label}
-                    style={{ width: '100%', borderRadius: 10, maxHeight: 240, objectFit: 'cover', display: 'block' }}
+                    src={currentSlide.src}
+                    alt={`Illustration for ${story?.headline || hotspot.label} — point ${currentSlide.pointIdx + 1}`}
+                    style={{ width: '100%', borderRadius: 10, maxHeight: 260, objectFit: 'cover', display: 'block' }}
                   />
-                  {story?.dateLabel && <p style={{ margin: 0, fontSize: 12, color: '#68736d', textAlign: 'center' }}>{story.dateLabel}</p>}
+                  <p style={{ margin: 0, fontSize: 12, color: '#68736d', textAlign: 'center' }}>
+                    {story?.dateLabel}
+                  </p>
                 </div>
-              ) : (
-                <p className="ccd-text">{talkingPoints[displayIndex]}</p>
               )}
             </div>
             <div className="ccd-dots" aria-hidden="true">
-              {talkingPoints.map((_, i) => (<span key={i} className={`ccd-dot${i === pointIndex ? ' active' : ''}`} />))}
+              {textSlides.map((_, i) => (
+                <span key={i} className={`ccd-dot${i === activeDotIdx ? ' active' : ''}`} />
+              ))}
             </div>
             <div className="ccd-footer">
-              <button className="ccd-prev-btn" onClick={handlePrev} disabled={pointIndex === 0 && !nav?.hasPrev} aria-label={pointIndex === 0 ? 'Previous chapter' : 'Previous point'}>
-                <ChevronLeft size={16} />{pointIndex === 0 ? 'Prev' : 'Back'}
+              <button className="ccd-prev-btn" onClick={handlePrev} disabled={slideIndex === 0 && !nav?.hasPrev} aria-label={slideIndex === 0 ? 'Previous chapter' : 'Previous'}>
+                <ChevronLeft size={16} />{slideIndex === 0 ? 'Prev' : 'Back'}
               </button>
-              <span className="ccd-counter" aria-live="polite">{pointIndex + 1} / {total}</span>
+              <span className="ccd-counter" aria-live="polite">{slideIndex + 1} / {total}</span>
               <button ref={nextBtnRef} className="ccd-next-btn" onClick={handleNext} disabled={spinning || chapterSpinning} aria-label={nextLabel}>
-                {nextLabel}{isLastPoint ? <ArrowRight size={16} /> : <ChevronRight size={16} />}
+                {nextLabel}{isLast ? <ArrowRight size={16} /> : <ChevronRight size={16} />}
               </button>
             </div>
           </div>

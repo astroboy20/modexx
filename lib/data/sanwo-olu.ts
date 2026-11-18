@@ -31,7 +31,10 @@ export const sanwoOluMonument: Monument = {
       headline: 'Background, election, and assumption of office',
       body: "Babajide Olusola Sanwo-Olu was born on 25 June 1965 in Lagos. A business professional and public administrator by background, he served in various capacities before his governorship, including as Commissioner for Economic Planning and Budget and Commissioner for Commerce and Industry under Governor Bola Tinubu.\n\nSanwo-Olu won the Lagos State governorship election in March 2019 under the APC, defeating the PDP candidate Jimi Agbaje. He was inaugurated as Governor on 29 May 2019. He was re-elected in 2023, winning a second term. His administration operates from Government House, Alausa, the state capital complex in Ikeja.",
       dateLabel: '29 May 2019',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_skyline.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/University_of_Lagos_Main_Entrance.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_skyline.jpg'
+      ],
       sources: [
         { title: 'Sanwo-Olu inaugurated as Lagos Governor', publisher: 'Vanguard', url: 'https://www.vanguardngr.com/' },
       ],
@@ -44,7 +47,10 @@ export const sanwoOluMonument: Monument = {
       headline: 'Development priorities and the THEMES agenda',
       body: "The Sanwo-Olu administration organised its development priorities around the THEMES agenda: Traffic Management and Transportation, Health and Environment, Education and Technology, Making Lagos a 21st Century Economy, Entertainment and Tourism, and Security and Governance.\n\nThis framework was intended to guide policy, budget priorities, and public communication. The THEMES pillars provided a structured lens for evaluating different areas of governance — from the Blue Line rail to the Lagos Smart City initiative. The framework was cited in budget presentations and official communications throughout the administration.",
       dateLabel: '2019 — ongoing',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Lagos,_Nigeria.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Above_View_of_Lagos_Business_District,_Lagos_Island._Nigeria,_West_Africa_15th_March,_2017_Landscape_(8).jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Mile2station-best.jpg'
+      ],
       sources: [
         { title: 'THEMES Agenda explained', publisher: 'Lagos State Government', url: 'https://lagosstate.gov.ng/' },
       ],
@@ -57,7 +63,12 @@ export const sanwoOluMonument: Monument = {
       headline: 'Key dates and milestones across the governorship',
       body: '29 May 2019: Inauguration as Governor of Lagos State.\n\nMarch 2020: Covid-19 response — Lagos becomes the epicentre of Nigeria\'s outbreak. Lockdown measures implemented.\n\nOctober 2020: #EndSARS protests. Demonstrations against police brutality culminate in the Lekki toll gate incident on 20 October 2020. A Judicial Panel of Inquiry was subsequently established.\n\n2021: Continued infrastructure and housing initiatives. Abuja-Lagos highway rehabilitation discussions.\n\n2022: Blue Line rail project construction progresses.\n\nMarch 2023: Re-elected as Governor for a second term.\n\n2023: Lagos Blue Line rail inaugurated, connecting Marina to Mile 2. First phase completed.\n\n2024: Red Line rail project continuing. Various road and drainage projects across the state.',
       dateLabel: '2019 — present',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Mile2station-best.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_skyline.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Protesters_at_the_endSARS_protest_in_Lagos,_Nigeria_92.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Mile2station-best.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_%22go_slow%22_(gridlock).jpg'
+      ],
       sources: [
         { title: 'Lagos governance timeline', publisher: 'Premium Times', url: 'https://www.premiumtimesng.com/' },
       ],
@@ -70,7 +81,10 @@ export const sanwoOluMonument: Monument = {
       headline: 'State policies, institutions, and programmes',
       body: "The Sanwo-Olu administration managed a state with a GDP larger than many African nations, relying heavily on internally generated revenue. Key administrative priorities included expanding Lagos's tax base, improving civil service delivery, and reforming state-owned enterprises.\n\nThe state government launched digital platforms for revenue collection (e-ticketing, online tax payments) and land administration. The Lagos State Residents Registration Agency (LASRRA) was expanded. Budget management and transparency were areas where civil society continued to call for improvement in monitoring public expenditure outcomes.",
       dateLabel: '2019 — ongoing',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Above_View_of_Lagos_Business_District,_Lagos_Island._Nigeria,_West_Africa_15th_March,_2017_Landscape_(8).jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_view_of_Marina,_Lagos_Island_East,_Lagos-Nigeria.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Above_View_of_Lagos_Business_District,_Lagos_Island._Nigeria,_West_Africa_15th_March,_2017_Landscape_(8).jpg'
+      ],
       sources: [
         { title: 'Lagos State budget and administration', publisher: 'BudgIT', url: 'https://budgit.org/' },
       ],
@@ -83,7 +97,10 @@ export const sanwoOluMonument: Monument = {
       headline: 'Documented public initiatives and interventions',
       body: "During the COVID-19 pandemic, the Lagos State government implemented one of Nigeria's most visible public health responses — establishing isolation centres, distributing palliatives, and coordinating with the private sector and federal government. The administration faced scrutiny over the management of palliative distribution.\n\nPost-#EndSARS, the state established a Judicial Panel of Inquiry to investigate police brutality claims, including the Lekki toll gate incident. The panel submitted its report with recommendations; implementation of its findings remained a subject of public discussion.\n\nHousing and social programmes including the LASHOREB housing scheme and market renewal projects were announced and at various stages of implementation.",
       dateLabel: '2020 — ongoing',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Protesters_at_the_endSARS_protest_in_Lagos,_Nigeria_92.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Entrance_of_Lagos_State_Teaching_Hospital.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Protesters_at_the_endSARS_protest_in_Lagos,_Nigeria_92.jpg'
+      ],
       sources: [
         { title: 'Lagos COVID-19 response', publisher: 'Channels Television', url: 'https://www.channelstv.com/' },
         { title: 'EndSARS Judicial Panel report', publisher: 'The Punch', url: 'https://punchng.com/' },
@@ -97,7 +114,10 @@ export const sanwoOluMonument: Monument = {
       headline: 'A biographical note',
       body: "Babajide Sanwo-Olu holds a Bachelor's degree from the University of Lagos and an MBA from the University of Lagos Business School. He completed an Advanced Management Programme at INSEAD, France.\n\nBefore politics, he worked in banking and business. He served as Lagos State Commissioner for Economic Planning and Budget and Commissioner for Commerce, Industry and Cooperatives under Governor Bola Tinubu. He later served as Group Managing Director of the Lagos State Development and Property Corporation (LSDPC).\n\nHe is known for his relatively accessible public communication style and his engagement with youth-focused governance discussions.",
       dateLabel: 'Historical background',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_State_Teaching_Hospital_and_College_of_Medicine.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Unilag_entrance_view_04.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Building-in-victoria-island-lagos.jpg'
+      ],
       sources: [
         { title: 'Profile: Babajide Sanwo-Olu', publisher: 'The Guardian Nigeria', url: 'https://guardian.ng/' },
       ],
@@ -110,7 +130,10 @@ export const sanwoOluMonument: Monument = {
       headline: 'Healthcare, education, housing, and social protection',
       body: "Education in Lagos saw investments in school infrastructure renovation, including the SUBEB school rehabilitation programme. The administration introduced e-learning platforms and coding schools under the Lagos SMART City initiative.\n\nHealthcare commitments included upgrading general hospitals, expanding the Lagos Health Scheme, and the COVID-19 response infrastructure which later served ongoing public health functions.\n\nHousing remained a major challenge given Lagos's population density and growth. The LSDPC and Ministry of Housing announced various projects; delivery timelines and affordability for low-income earners were areas of ongoing public scrutiny.",
       dateLabel: '2019 — ongoing',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Kings_College,_Lagos_01.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Kings_College,_Lagos_01.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_State_Teaching_Hospital_and_College_of_Medicine.jpg'
+      ],
       sources: [
         { title: 'Lagos social investment programmes', publisher: 'Lagos State Government', url: 'https://lagosstate.gov.ng/' },
       ],
@@ -123,7 +146,10 @@ export const sanwoOluMonument: Monument = {
       headline: 'Drainage, flood management, urban planning, and infrastructure',
       body: "Lagos has a chronic challenge with flooding, driven by its low-lying coastal geography, rapid urbanisation, and drainage infrastructure deficits. The Sanwo-Olu administration invested in drainage improvement and flood management, though flooding continued to affect many communities annually.\n\nThe Lagos Metropolitan Area Transport Authority (LAMATA) coordinated urban transport planning. Road rehabilitation projects were ongoing across the state's arterial roads and bridges. The Eko Atlantic development and ongoing waterfront development were part of the urban planning landscape.\n\nCritiques from urban planners and residents focused on the need for more systematic drainage investment and better enforcement of building regulations in flood-prone areas.",
       dateLabel: '2019 — ongoing',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_%22go_slow%22_(gridlock).jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_Street_at_high_tide.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Eko_Atlantic_(Lagos)_Skyline.jpg'
+      ],
       sources: [
         { title: 'Lagos flooding and urban planning', publisher: 'The Guardian Nigeria', url: 'https://guardian.ng/' },
       ],
@@ -136,7 +162,10 @@ export const sanwoOluMonument: Monument = {
       headline: 'Rail, roads, bridges, and transport development',
       body: "The Lagos Blue Line rail, connecting Marina to Mile 2, was inaugurated in 2023 — the first phase of a longer planned corridor. This represented a significant milestone in the administration's transport agenda and one of the most tangible completions of a long-planned Lagos mass transit project.\n\nThe Red Line rail (connecting Agbado to Marina via Ikeja) was under construction and advancing at varying speeds. Road rehabilitation under the Lagos-Badagry Expressway and other key corridors continued.\n\nBRT (Bus Rapid Transit) expansion and the Lagos Ferry Service (LAGFERRY) were part of the multimodal transport strategy aimed at reducing congestion in what is one of Africa's most traffic-congested cities.",
       dateLabel: '2019 — ongoing',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Lekki-ikoyi_link_bridge_(20500110192).jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Mile2station-best.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Obanikoro_BRT_bus_station.jpg'
+      ],
       sources: [
         { title: 'Lagos Blue Line rail inauguration', publisher: 'Vanguard', url: 'https://www.vanguardngr.com/' },
         { title: 'Lagos transport master plan', publisher: 'LAMATA', url: 'https://lamata.lagosstate.gov.ng/' },
@@ -150,7 +179,10 @@ export const sanwoOluMonument: Monument = {
       headline: 'Milestones, challenges, and ongoing work',
       body: "The Sanwo-Olu governorship has operated across an unusually turbulent period — navigating a global pandemic, the social upheaval of #EndSARS, economic pressures from federal policy reforms, and the ongoing infrastructural demands of Africa's largest city.\n\nMilestones include the Blue Line rail inauguration, significant digital revenue administration improvements, COVID-19 response leadership, and a second election victory in 2023.\n\nOngoing challenges include traffic congestion, flooding, housing affordability, youth unemployment, and the implementation gap between announced projects and verified deliveries. The administration's record will ultimately be judged by the tangible improvement in the daily experience of the estimated 20+ million residents of Lagos State.",
       dateLabel: '2019 — ongoing',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Eko_Atlantic_(Lagos)_Skyline.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Lekki-ikoyi_link_bridge_(20500110192).jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Lagos_%22go_slow%22_(gridlock).jpg'
+      ],
       sources: [
         { title: 'Lagos governance assessment', publisher: 'BudgIT', url: 'https://budgit.org/' },
       ],

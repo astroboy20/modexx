@@ -15,7 +15,8 @@ export interface Story {
   dateLabel: string
   sources: Source[]
   editorialNote?: string
-  cardImage?: string   // optional image shown after the last talking-point card (URL or /public path)
+  cardImage?: string        // legacy: single image shown after all talking points
+  pointImages?: string[]   // one image per talking point, shown immediately after each point
 }
 
 export interface Hotspot {

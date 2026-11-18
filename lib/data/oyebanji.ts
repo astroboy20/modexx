@@ -34,7 +34,11 @@ export const oyebanjiMonument: Monument = {
       headline: 'Born in the land of hot and cold springs',
       body: 'Biodun Abayomi Oyebanji was born on 21 December 1967 in Ikogosi-Ekiti — a town later made world-famous by its warm spring, the only place on earth where hot and cold water emerge side by side.\n\nHis early schooling took him through Baptist Primary School in Ikogosi-Ekiti, Awo Community High School, C.A.C. Grammar School in Efon-Alaaye, the Federal School of Arts and Science in Ondo, and District Commercial Secondary School in Aramoko-Ekiti. The state government profile records this educational journey across multiple institutions as formative to his later role in public administration.\n\nIn 1989 he obtained a Bachelor of Science in Political Science from Ondo State University — now Ekiti State University in Ado-Ekiti. In 1992 he earned a Master of Science in Political Science, specialising in International Relations and Strategic Studies, from the University of Ibadan. He later joined the Department of Political Science at the University of Ado-Ekiti as a lecturer, a role he held from 1993 to 1997.',
       dateLabel: '21 December 1967 — Ikogosi-Ekiti',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Ikogosi_Warm_water_spring_10.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ikogosi_Warm_water_spring_10.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/UNIVERSITY_OF_IBADAN_Main_Gate_Agbowo,_Ibadan_2.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Senate_Building,_University_of_Ibadan.jpg'
+      ],
       sources: [
         { title: 'Office of the Governor — Profile of the Governor', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
         { title: 'Celebrating Gov. Oyebanji, The People\'s Governor at 57', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
@@ -49,7 +53,11 @@ export const oyebanjiMonument: Monument = {
       headline: 'Education, public administration, and the six-pillar framework',
       body: 'A Political Science education at Ondo State University and a master\'s degree from the University of Ibadan gave Oyebanji a grounding in public administration, inter-governmental relations, and strategic studies. His academic background shaped roles he later held in budgeting, policy coordination, and state administration.\n\nThe administration\'s programme is organised around six pillars: Governance; Youth Development and Job Creation; Human Capital Development; Agriculture and Rural Development; Infrastructure and Industrialisation; and Arts, Culture and Tourism. The state published this framework as part of the Ekiti State Development Plan 2021–2050.\n\nThe six-pillar labels are the administration\'s own programme taxonomy. They describe the policy framework; independent verification of outcomes against each pillar requires project-level data beyond government announcements.',
       dateLabel: '2022 — ongoing',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/UNIVERSITY_OF_IBADAN_Main_Gate_Agbowo,_Ibadan_2.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/FACULTY_OF_EDUCATION,_UNIVERSITY_OF_IBADAN,_IBADAN,_NIGERIA.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Nigeria_Ekiti_State_map.png',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Mountain_view_Ilawe_Ekiti,_Ekiti_State.jpg'
+      ],
       sources: [
         { title: 'Ekiti State Six Pillars — Second-Year State of the State Address', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
         { title: 'Office of the Governor — Profile of the Governor', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
@@ -64,7 +72,12 @@ export const oyebanjiMonument: Monument = {
       headline: 'From state creation to a consecutive second term',
       body: '1996 — Oyebanji served as Member and Secretary of the committee for the creation of Ekiti State, placing him at the foundation of the state\'s institutional history.\n\n1999 — Entered public service as Special Assistant (Parliamentary Affairs) to the Governor. By 2001 he was Special Adviser, and by 2003 he was Chief of Staff.\n\n2010–2011 — Commissioner for Integration and Inter-Governmental Affairs. 2011–2013 — Head, Office of Transformation Strategy and Delivery. 2013–2014 — Commissioner for Budget, Economic Planning and Service Delivery.\n\nOctober 2018 — Appointed Secretary to the Ekiti State Government (SSG) under Governor Fayemi; resigned in December 2021 to contest the governorship.\n\n16 October 2022 — Inaugurated as Governor of Ekiti State.\n\n20 June 2026 — Re-elected, winning all 16 local government areas with 319,224 votes, according to INEC results reported by the Centre for Democracy and Development. He became the first governor in Ekiti State history to win a consecutive second term.\n\n16 October 2026 — Sworn in for a second four-year term.',
       dateLabel: '1996 — 16 October 2026',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Nigeria_Ekiti_State_map.png',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/NigeriaEkiti.png',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Feder_Secretariat_Building_Abuja_Nigeria.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Welcome_to_Ado_Ekiti._Ekiti_state.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ikogosi_WarmSpring_MeetingPoint.jpg'
+      ],
       sources: [
         { title: 'Office of the Governor — Profile of the Governor', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
         { title: 'CDD-EAC Assessment of the 2026 Ekiti Governorship Election', publisher: 'Centre for Democracy and Development', url: 'https://cddwestafrica.org/' },
@@ -80,7 +93,10 @@ export const oyebanjiMonument: Monument = {
       headline: 'Shared prosperity, six pillars, and the state development plan',
       body: 'The administration\'s stated guiding theme is "shared prosperity" — Ekiti as a state where residents and communities can benefit from opportunity, peace, progress, dignity, health and safety, with integrity as a public value. The six policy pillars align with the Ekiti State Development Plan 2021–2050.\n\nGovernance priorities included public-sector performance, transparency, fiscal discipline, and citizen engagement. The administration published medium-term sector strategies and a Citizens\' Budget — a simplified version of the state budget intended to make public finance accessible to ordinary residents.\n\nThe 2024 Citizens\' Accountability Report recorded total revenue of ₦442.141 billion actual against a ₦372.154 billion budget. Internally generated revenue reached ₦34.734 billion — above target but representing 9 per cent year-on-year growth. Debt service was ₦69.574 billion actual against a ₦19 billion budget, a major variance that the state\'s fiscal documents note requires careful reading alongside debt-stock and exchange-rate adjustment lines.',
       dateLabel: '2022 — ongoing',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Ikogosi_WarmSpring_MeetingPoint.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ilawe_-_Ekiti.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ekiti_state_internal_revenue_house,_Ado-ekiti2.jpg'
+      ],
       sources: [
         { title: 'Ekiti State Six Pillars — Second-Year State of the State Address', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
         { title: 'Ekiti State Government 2024 Citizens\' Accountability Report', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
@@ -95,7 +111,11 @@ export const oyebanjiMonument: Monument = {
       headline: 'Chief of Staff, commissioners, and coordinating the state',
       body: 'Oyebanji came to the governorship with more state administrative experience than most predecessors. His sequence of roles — Chief of Staff, Commissioner for Integration and Inter-Governmental Affairs, Head of the Office of Transformation Strategy and Delivery, Commissioner for Budget and Planning, and Secretary to the State Government — gave him direct experience in inter-governmental relations, budgeting, delivery tracking, and cabinet coordination.\n\nThis background shaped his approach to running the state: institutional continuity, clearly stated pillars, and a focus on delivery tracking. The administration reconstituted key state boards and agencies, and published a medium-term sector strategy covering 2026–2028.\n\nPublic decisions during the first term included school rehabilitation across 203 secondary schools and 950 primary schools (reported by the second-term inauguration committee), teacher recruitment exceeding 2,000 (attributed to government sources by Premium Times), and the expansion of primary healthcare centres. These are government-reported figures and should be attributed as such until supported by independent evaluation data.',
       dateLabel: '2022 — 2026',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Feder_Secretariat_Building_Abuja_Nigeria.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Feder_Secretariat_Building_Abuja_Nigeria.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Odo_Ado_Roundabout_,_Ado_Ekiti,_Ekiti_State.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Kings_College,_Lagos_01.jpg'
+      ],
       sources: [
         { title: 'Office of the Governor — Profile of the Governor', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
         { title: 'Second-Term Inauguration Committee — Reported Projects and Sector Claims', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
@@ -111,7 +131,11 @@ export const oyebanjiMonument: Monument = {
       headline: 'The 1996 committee, Ekiti\'s creation, and place identity',
       body: 'In 1996, Oyebanji served as Member and Secretary of the committee for the creation of Ekiti State — placing him at the institutional origins of the state itself. Ekiti State was carved out of the old Ondo State on 1 October 1996, by the military administration of General Sani Abacha.\n\nThe state takes its name from "Ile Olokiti" — the hilly land — a reference to the granite inselbergs and undulating terrain that define its geography. Its motto is "Land of Honour." Culturally, Ekiti communities share the "-Ekiti" suffix in their town names, a marker of common identity across the 16 local government areas.\n\nIkogosi, Oyebanji\'s birthplace, is itself a symbol of Ekiti\'s unique geography: the site of the warm spring where hot and cold water meet without mixing. For the governor, the connection between his personal origin and the state\'s founding identity is biographical and institutional at once.',
       dateLabel: '1 October 1996 — Ekiti State created',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Ikogosi-Ekiti_warm_spring_02.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Nigeria_Ekiti_State_map.png',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Mountain_view_Ilawe_Ekiti,_Ekiti_State.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ikogosi_Warm_water_spring_10.jpg'
+      ],
       sources: [
         { title: 'Office of the Governor — Profile of the Governor', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
         { title: '10th Anniversary of the Creation of Ekiti State', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
@@ -126,7 +150,10 @@ export const oyebanjiMonument: Monument = {
       headline: 'Education, healthcare, and investment in people',
       body: 'Education investment under the first term centred on school rehabilitation, teacher recruitment, and examination access. The second-term inauguration committee reported that 203 secondary schools and 950 primary schools had been renovated. Premium Times separately reported the administration\'s statement that more than 2,000 teachers had been recruited and ₦14 billion spent on 203 public secondary schools.\n\nFee-free support included a reported ₦2.158 billion spent on WAEC fees for 69,000 students and free JAMB forms for 12,400 students over four years. These figures are attributed to government sources and should be paired with independent assessments of learning outcomes, teacher attendance, and facility functionality for a complete picture.\n\nIn healthcare, the second-term inauguration committee reported that more than 110 primary healthcare centres and all general hospitals in the state had been renovated and equipped. An 80-bed facility at Ekiti State University Teaching Hospital was reported as recently commissioned. As with school data, infrastructure claims require pairing with staffing, drug availability, and patient-outcome data to assess real service impact.',
       dateLabel: '2022 — 2026',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Mountain_view_Ilawe_Ekiti,_Ekiti_State.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ikole_ekiti_nigeria.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Entrance_of_Lagos_State_Teaching_Hospital.jpg'
+      ],
       sources: [
         { title: 'Second-Term Inauguration Committee — Reported Projects and Sector Claims', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
         { title: 'ANALYSIS: Oyebanji — Over three years as Ekiti governor, what has changed?', publisher: 'Premium Times', url: 'https://www.premiumtimesng.com/' },
@@ -141,7 +168,11 @@ export const oyebanjiMonument: Monument = {
       headline: 'Youth farming, aggregation hubs, and food systems',
       body: 'Agriculture is the mainstay of Ekiti\'s economy. The administration promoted youth participation in commercial farming through cluster initiatives and food aggregation. The Information Commissioner was reported by Premium Times as saying that more than 5,000 youths were engaged in commercial farming; this figure is attributed to a government spokesperson and should be written as a government-reported claim unless supported by programme-level beneficiary data.\n\nThe Ilu Eye Aggregation Hub and Ounje Ekiti retail outlet were cited as specific initiatives connecting farmers to markets and urban consumers. Rural access roads under the RAAMP programme — a state/World Bank collaboration — were described as improving agricultural market connectivity.\n\nFor a complete assessment of the food system, the relevant indicators include the volume of produce processed, the number of smallholder farmers with market access, storage capacity, and whether incomes for rural households have measurably improved.',
       dateLabel: '2022 — 2026',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Ikole_ekiti_nigeria.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Nigerian_farmers.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ado_ekiti_road.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ilawe_-_Ekiti.jpg'
+      ],
       sources: [
         { title: 'ANALYSIS: Oyebanji — Over three years as Ekiti governor, what has changed?', publisher: 'Premium Times', url: 'https://www.premiumtimesng.com/' },
         { title: 'Ekiti State Government 2024 Citizens\' Accountability Report', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
@@ -156,7 +187,11 @@ export const oyebanjiMonument: Monument = {
       headline: 'Roads, the airport, and infrastructure across administrations',
       body: 'Premium Times listed road schemes including the 21 km Ikere–Igbara-Odo route, Ado–Iworoko–Ifaki Federal Road, Ring Road Phase I, Omu–Ijelu–Itapa, GRA Third Extension, and Ikole–Isinbode roads. Official state communications reported more than 500 km of completed inter-city and rural roads at the second-term inauguration; a 10 October 2026 official statement gave a combined 417 km figure based on a July 2026 snapshot. The difference between totals may reflect different scopes or cut-off dates.\n\nThe Ekiti Agro-Allied International Cargo Airport is an important project, but its origins span administrations. Premium Times reported that construction was started under the Kayode Fayemi administration and completed during Oyebanji\'s first term; private support from Afe Babalola contributed to completion. The state said the NCAA approved scheduled commercial operations effective 4 October 2025 for an initial six-month period.\n\nSecond-term airport upgrade announcements — a fuel depot, Instrument Landing System, Aerodrome Ground Lighting, and plans for United Nigeria Airlines to scale to daily flights by January 2027 — are dated announcements and work-in-progress items as of the November 2026 research cut-off.',
       dateLabel: '2022 — 2026',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Ikogosi_WarmSpringEntrance.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ado_ekiti_road.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ikogosi_WarmSpringEntrance.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/NigeriaEkiti.png'
+      ],
       sources: [
         { title: 'ANALYSIS: Oyebanji — Over three years as Ekiti governor, what has changed?', publisher: 'Premium Times', url: 'https://www.premiumtimesng.com/' },
         { title: 'Ekiti Agro-Allied International Cargo Airport Receives NCAA Approval', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
@@ -172,7 +207,11 @@ export const oyebanjiMonument: Monument = {
       headline: 'Fiscal indicators, election findings, and second-term commitments',
       body: 'The 2026 election was declared won by Oyebanji with 319,224 votes. The Centre for Democracy and Development reported he won all 16 local government areas and secured nearly 85 per cent of valid votes — with 382,010 votes cast from 1,059,360 registered voters, approximately 36 per cent turnout. CDD described the poll as generally peaceful but recorded concerns including alleged vote-buying, inconsistencies in sensitive materials, and BVAS/accreditation problems in some locations. PDP and ADC candidates rejected the result; CDD said it did not adjudicate those claims.\n\nOn fiscal accountability, the 2024 Auditor-General\'s report provides audited financial statements alongside the Citizens\' Accountability Report. Debt service of ₦69.574 billion against a ₦19 billion budget is the most significant variance in the fiscal record.\n\nFor the second term, the governor presented a proposed ₦490.740 billion 2027 budget — described as the "Budget of Sustainable Progress and Prosperity" — to the Ekiti House of Assembly on 8 October 2026. Priority areas include infrastructure, agriculture, health, education, youth skills, and e-governance. The proposal\'s passage and implementation remain to be tracked.',
       dateLabel: 'June 2026 — ongoing',
-      cardImage: 'https://commons.wikimedia.org/wiki/Special:FilePath/Ikogosi_warm_spring_05.jpg',
+      pointImages: [
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Nigeria_Ekiti_State_map.png',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ekiti_state_internal_revenue_house,_Ado-ekiti2.jpg',
+        'https://commons.wikimedia.org/wiki/Special:FilePath/Ikogosi_warm_spring_05.jpg'
+      ],
       sources: [
         { title: 'CDD-EAC Assessment of the 2026 Ekiti Governorship Election', publisher: 'Centre for Democracy and Development', url: 'https://cddwestafrica.org/' },
         { title: 'Ekiti State Government 2024 Citizens\' Accountability Report', publisher: 'Ekiti State Government', url: 'https://ekitistate.gov.ng/' },
