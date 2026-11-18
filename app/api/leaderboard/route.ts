@@ -63,24 +63,34 @@ export async function POST(req: NextRequest) {
 
   const { monumentSlug, score, correctCount, completionSeconds, votersCardNumber } = body
 
-  // Validate
+  // Validate — each attempt scores max 100 (10 questions × 10 pts)
   if (!monumentSlug) return NextResponse.json({ error: 'Missing monumentSlug.' }, { status: 400 })
-  if (typeof score !== 'number' || score < 0 || score > 1000)
+  if (typeof score !== 'number' || score < 0 || score > 100)
     return NextResponse.json({ error: 'Invalid score.' }, { status: 400 })
   if (typeof correctCount !== 'number' || correctCount < 0 || correctCount > 10)
     return NextResponse.json({ error: 'Invalid correctCount.' }, { status: 400 })
   if (typeof completionSeconds !== 'number' || completionSeconds < 0)
     return NextResponse.json({ error: 'Invalid completionSeconds.' }, { status: 400 })
 
-  // Check if this is better than existing best score
+  // Fetch current cumulative score for this player+monument
   const { data: existing } = await supabaseAdmin
     .from('leaderboard_entries')
-    .select('score')
+    .select('score, attempt_number')
     .eq('player_id', player.id)
     .eq('monument_slug', monumentSlug)
-    .order('score', { ascending: false })
+    .order('attempt_number', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  const previousTotal = existing?.score ?? 0
+  const nextAttemptNumber = (existing?.attempt_number ?? 0) + 1
+
+  // Guard: max 10 retakes, max cumulative 1000
+  if (nextAttemptNumber > 10) {
+    return NextResponse.json({ error: 'Maximum retakes reached.' }, { status: 400 })
+  }
+
+  const cumulativeScore = Math.min(previousTotal + score, 1000)
 
   // Always insert — the view handles best score display
   const { data: entry, error } = await supabaseAdmin
@@ -90,9 +100,10 @@ export async function POST(req: NextRequest) {
       monument_slug: monumentSlug,
       display_name: player.displayName,
       voters_card_number: votersCardNumber || null,
-      score,
+      score: cumulativeScore,          // cumulative total stored
       correct_count: correctCount,
       completion_seconds: completionSeconds,
+      attempt_number: nextAttemptNumber,
     })
     .select('id')
     .single()
@@ -102,5 +113,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to save score.' }, { status: 500 })
   }
 
-  return NextResponse.json({ ok: true, entryId: entry.id })
+  return NextResponse.json({ ok: true, entryId: entry.id, cumulativeScore, attemptNumber: nextAttemptNumber })
 }

@@ -7,9 +7,9 @@ import { ArrowLeft, ArrowRight, CheckCircle2, XCircle, Trophy, Share2, RotateCcw
 import { toast } from 'sonner'
 import { getMonument } from '@/lib/data/index'
 import type { Monument, Question } from '@/lib/data/index'
-import { getActiveAttempt, clearActiveAttempt, getBestAttempt, getAttemptHistory, type QuizAttempt } from '@/lib/storage'
+import { getActiveAttempt, clearActiveAttempt, getBestAttempt, getAttemptHistory, getCumulativeScore, getAttemptCount, type QuizAttempt } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
-import { calculateScore } from '@/lib/quiz'
+import { calculateScore, MAX_ATTEMPTS, MAX_SCORE_PER_ATTEMPT } from '@/lib/quiz'
 import ScorecardPreview, { renderScorecard, ELECTION_CONFIG, daysUntil } from '@/components/ScorecardPreview'
 import SiteHeader from '@/components/SiteHeader'
 
@@ -29,6 +29,7 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
   const [previousBest, setPreviousBest] = useState<QuizAttempt | null>(null)
   const [isNewBest, setIsNewBest] = useState(false)
   const [attemptCount, setAttemptCount] = useState(0)
+  const [cumulativeScore, setCumulativeScore] = useState(0)
 
   useEffect(() => {
     const player = getClientSession()
@@ -43,23 +44,18 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
 
     if (player) {
       setDisplayName(player.displayName)
+      // Fix: fetch leaderboard and find MY entry by player_id correctly
       fetch(`/api/leaderboard?slug=${slug}`)
         .then((r) => r.json())
         .then(({ entries }) => {
-          if (!entries?.length) return
-          const sorted = [...entries].sort((a: { score: number; correct_count: number; completion_seconds: number }, b: { score: number; correct_count: number; completion_seconds: number }) => {
-            if (b.score !== a.score) return b.score - a.score
-            if (b.correct_count !== a.correct_count) return b.correct_count - a.correct_count
-            return a.completion_seconds - b.completion_seconds
-          })
-          let r = 1
-          for (let i = 0; i < sorted.length; i++) {
-            if (i > 0) {
-              const prev = sorted[i - 1]
-              if (sorted[i].score !== prev.score || sorted[i].correct_count !== prev.correct_count || sorted[i].completion_seconds !== prev.completion_seconds) r = i + 1
-            }
-            if (sorted[i].player_id === player.id) { setRank(r); break }
-          }
+          if (!entries?.length || !player?.id) return
+          // Find the entry that belongs to this player
+          const myEntry = entries.find((e: { player_id: string }) => e.player_id === player.id)
+          if (!myEntry) return
+          // Rank = count of entries with a strictly higher score + 1
+          const myScore = myEntry.score
+          const rank = entries.filter((e: { score: number }) => e.score > myScore).length + 1
+          setRank(rank)
         })
         .catch(() => {})
     }
@@ -82,6 +78,7 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
     setPreviousBest(best)
     setIsNewBest(!best || a.score > best.score || (a.score === best.score && a.correctCount > best.correctCount))
     setAttemptCount(history.length + 1) // total including this one
+    setCumulativeScore(getCumulativeScore(slug))
 
     setMonument(m)
     setAttempt(a)
@@ -92,6 +89,10 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
 
   function handleReplay() {
     if (!monument) return
+    if (getAttemptCount(monument.slug) >= MAX_ATTEMPTS) {
+      toast.error('You have used all 10 attempts for this challenge.')
+      return
+    }
     clearActiveAttempt(monument.slug)
     router.push(`/challenge/${monument.slug}/quiz`)
   }
@@ -118,12 +119,14 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
         accentColor,
         electionCfg,
         countdown,
+        cumulativeScore,
+        attemptNumber: attemptCount,
       })
 
       const shareText = [
         `🏛 ${monument.name}`,
         ``,
-        `I scored ${attempt.score}/1,000 pts — ${attempt.correctCount}/10 correct${rank ? ` · Ranked #${rank}` : ''}.`,
+        `I scored ${attempt.score}/100 pts this attempt · ${cumulativeScore}/1,000 total — ${attempt.correctCount}/10 correct${rank ? ` · Ranked #${rank}` : ''}.`,
         ``,
         `🗳 ${electionCfg.cta} — ${countdown}`,
         ``,
@@ -182,14 +185,37 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
               <span className="eyebrow-line" style={{ background: accentColor }} />{monument.name}
             </p>
             <p className="results-player">@{displayName}</p>
+
+            {/* Per-attempt score */}
             <div className="results-score-display">
               <span className="results-score-number" style={{ color: accentColor }}>{attempt.score}</span>
-              <span className="results-score-denom">/ 1,000</span>
+              <span className="results-score-denom">/ {MAX_SCORE_PER_ATTEMPT}</span>
             </div>
             <div className="results-meta-row">
               <span>{attempt.correctCount}/10 correct</span><span>·</span>
               <span>{mins}m {secs}s</span>
               {rank && <><span>·</span><span>Rank #{rank}</span></>}
+            </div>
+
+            {/* Cumulative score progress bar */}
+            <div style={{ marginTop: 16, padding: '12px 16px', borderRadius: 10, background: accentColor + '12', border: `1px solid ${accentColor}30` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: accentColor }}>Cumulative total</span>
+                <span style={{ fontSize: 13, color: 'var(--muted)' }}>Attempt {attemptCount} of {MAX_ATTEMPTS}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 8 }}>
+                <span style={{ fontSize: 28, fontWeight: 700, color: accentColor }}>{cumulativeScore}</span>
+                <span style={{ fontSize: 14, color: 'var(--muted)' }}>/ 1,000 pts</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, background: 'var(--line)' }}>
+                <div style={{ height: '100%', borderRadius: 3, background: accentColor, width: `${(cumulativeScore / 1000) * 100}%`, transition: 'width 0.5s ease' }} />
+              </div>
+              {attemptCount < MAX_ATTEMPTS && (
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted)' }}>{MAX_ATTEMPTS - attemptCount} retake{MAX_ATTEMPTS - attemptCount !== 1 ? 's' : ''} remaining · +{MAX_SCORE_PER_ATTEMPT} pts possible per retake</p>
+              )}
+              {attemptCount >= MAX_ATTEMPTS && (
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--muted)' }}>Maximum attempts reached</p>
+              )}
             </div>
 
             {/* Persona D: personal best comparison */}
@@ -198,13 +224,13 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
                 {isNewBest ? (
                   <>
                     <Trophy size={15} style={{ color: accentColor, flexShrink: 0 }} />
-                    <span style={{ color: accentColor, fontWeight: 600 }}>New personal best!</span>
-                    {previousBest && <span style={{ color: 'var(--muted)' }}>Previous: {previousBest.score} pts</span>}
+                    <span style={{ color: accentColor, fontWeight: 600 }}>New best this attempt!</span>
+                    {previousBest && <span style={{ color: 'var(--muted)' }}>Previous best: {previousBest.score}/100 pts</span>}
                   </>
                 ) : (
                   <>
                     <Trophy size={15} style={{ color: 'var(--muted)', flexShrink: 0 }} />
-                    <span style={{ color: 'var(--muted)' }}>Attempt {attemptCount} · Best: {previousBest?.score ?? attempt.score} pts</span>
+                    <span style={{ color: 'var(--muted)' }}>Attempt {attemptCount} · Best single attempt: {previousBest?.score ?? attempt.score}/100 pts</span>
                   </>
                 )}
               </div>
@@ -216,7 +242,9 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
             <button className="button" style={{ background: 'var(--soft)' }} onClick={handleShare} disabled={sharing}>
               {sharing ? <><span className="spinner spinner--sm" aria-hidden /> Sharing…</> : copied ? 'Copied!' : <><Share2 size={16} /> Share result</>}
             </button>
-            <button className="button" style={{ background: 'var(--soft)' }} onClick={handleReplay}><RotateCcw size={16} /> Replay</button>
+            {attemptCount < MAX_ATTEMPTS && (
+              <button className="button" style={{ background: 'var(--soft)' }} onClick={handleReplay}><RotateCcw size={16} /> Retake ({MAX_ATTEMPTS - attemptCount} left)</button>
+            )}
             <Link href={`/leaderboard/${monument.slug}`} className="button" style={{ background: 'var(--soft)' }}><Trophy size={16} /> Leaderboard</Link>
           </div>
 
@@ -231,7 +259,7 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
                     <div className="answer-item-header">
                       <span className="answer-q-number" style={{ color: isCorrect ? accentColor : '#d92e35' }}>Q{i + 1}</span>
                       {isCorrect ? <CheckCircle2 size={18} style={{ color: accentColor }} /> : <XCircle size={18} style={{ color: '#d92e35' }} />}
-                      <span className="answer-score">{isCorrect ? '+100 pts' : '0 pts'}</span>
+                      <span className="answer-score">{isCorrect ? '+10 pts' : '0 pts'}</span>
                     </div>
                     <p className="answer-question">{q.questionText}</p>
                     <div className="answer-options-review">
@@ -260,19 +288,10 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
 
           <div className="results-bottom-cta">
             <Link href={`/leaderboard/${monument.slug}`} className="button button-dark"><Trophy size={16} /> View leaderboard <ArrowRight size={16} /></Link>
-            <button className="button" style={{ background: 'var(--soft)' }} onClick={handleReplay}><RotateCcw size={16} /> Try again</button>
+            {attemptCount < MAX_ATTEMPTS && (
+              <button className="button" style={{ background: 'var(--soft)' }} onClick={handleReplay}><RotateCcw size={16} /> Try again ({MAX_ATTEMPTS - attemptCount} left)</button>
+            )}
             <Link href="/monuments" className="text-link">Explore more monuments <ArrowRight size={15} /></Link>
-            {/* Suggest the other challenge for Persona D */}
-            {monument.slug === 'tinubu' && (
-              <Link href="/challenge/sanwo-olu/instructions" className="text-link" style={{ marginTop: 2 }}>
-                Try the Sanwo-Olu challenge <ArrowRight size={15} />
-              </Link>
-            )}
-            {monument.slug === 'sanwo-olu' && (
-              <Link href="/challenge/tinubu/instructions" className="text-link" style={{ marginTop: 2 }}>
-                Try the Tinubu challenge <ArrowRight size={15} />
-              </Link>
-            )}
           </div>
         </div>
       </div>
@@ -284,7 +303,9 @@ export default function ResultsPage({ params }: { params: Promise<{ slug: string
           score={attempt.score} 
           correctCount={attempt.correctCount} 
           completionSeconds={completionSeconds} 
-          rank={rank} 
+          rank={rank}
+          cumulativeScore={cumulativeScore}
+          attemptNumber={attemptCount}
           onClose={() => setShowScorecard(false)} />
       )}
     </main>

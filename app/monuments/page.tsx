@@ -48,7 +48,8 @@ export default function MonumentsPage() {
                         : {
                             position: 'absolute', inset: 0,
                             width: '100%', height: '100%',
-                            objectFit: monument.portraitFit ?? 'cover', objectPosition: 'top center',
+                            objectFit: monument.portraitFit ?? 'cover',
+                            objectPosition: monument.imagePosition ?? 'top center',
                             display: 'block',
                           }
                     }

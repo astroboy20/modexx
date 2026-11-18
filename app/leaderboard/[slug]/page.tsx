@@ -11,6 +11,116 @@ import { fetchLeaderboard, type RankedEntry } from '@/lib/leaderboard'
 import { getClientSession } from '@/lib/session-client'
 import SiteHeader from '@/components/SiteHeader'
 
+// ── Vote config — monuments with an upcoming electoral candidate ──────────
+// Only include monuments where the subject is actively running for office.
+// Oyebanji's election (Jun 2026) is past; his leaderboard cross-promotes Tinubu.
+interface VoteConfig {
+  candidateName: string
+  electionLabel: string
+  electionDate: string
+  portrait: string
+  ctaLabel: string
+}
+
+const VOTE_CONFIG: Record<string, VoteConfig> = {
+  tinubu: {
+    candidateName: 'Bola Ahmed Tinubu',
+    electionLabel: 'Presidential Election · 16 January 2027',
+    electionDate: '2027-01-16',
+    portrait: '/tinubu-president.jpg',
+    ctaLabel: 'Vote Tinubu · January 2027',
+  },
+  hamzat: {
+    candidateName: 'Dr. Kadri Obafemi Hamzat',
+    electionLabel: 'Lagos Governorship · 6 February 2027',
+    electionDate: '2027-02-06',
+    portrait: '/hamzat-potrait.png',
+    ctaLabel: 'Vote Hamzat · February 2027',
+  },
+  // oyebanji: election was June 2026 (past) — no vote card shown
+  // ekiti-logo: not a candidate monument
+}
+
+// For non-electoral monuments (oyebanji, ekiti-logo) show a Tinubu cross-promo instead
+const TINUBU_PROMO: VoteConfig = {
+  candidateName: 'Bola Ahmed Tinubu',
+  electionLabel: 'Presidential Election · 16 January 2027',
+  electionDate: '2027-01-16',
+  portrait: '/tinubu-president.jpg',
+  ctaLabel: 'Also: Vote Tinubu · January 2027',
+}
+
+function daysUntil(isoDate: string): string {
+  const diff = new Date(isoDate).getTime() - Date.now()
+  if (diff <= 0) return 'Election Day!'
+  const d = Math.floor(diff / 86400000)
+  return `${d} day${d !== 1 ? 's' : ''} to go`
+}
+
+// ── Vote card — no external link button, just candidate info + countdown ──
+function VoteCard({ config, accentColor }: { config: VoteConfig; accentColor: string }) {
+  const countdown = daysUntil(config.electionDate)
+  const isPast = new Date(config.electionDate).getTime() < Date.now()
+  if (isPast) return null
+
+  return (
+    <div
+      style={{
+        marginTop: 24,
+        padding: '16px 18px',
+        borderRadius: 14,
+        border: `1.5px solid ${accentColor}35`,
+        background: `${accentColor}08`,
+        display: 'flex',
+        gap: 14,
+        alignItems: 'center',
+      }}
+    >
+      {/* Portrait */}
+      <div
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: '50%',
+          overflow: 'hidden',
+          flexShrink: 0,
+          border: `2px solid ${accentColor}`,
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={config.portrait}
+          alt={config.candidateName}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
+        />
+      </div>
+
+      {/* Info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 700, color: accentColor }}>
+          {config.ctaLabel}
+        </p>
+        <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--muted)' }}>
+          {config.electionLabel}
+        </p>
+        <span
+          style={{
+            display: 'inline-block',
+            background: accentColor,
+            color: '#fff',
+            padding: '3px 10px',
+            borderRadius: 20,
+            fontSize: 11,
+            fontWeight: 700,
+          }}
+        >
+          ⏱ {countdown}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export default function LeaderboardPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = React.use(params)
   const router = useRouter()
@@ -54,7 +164,6 @@ export default function LeaderboardPage({ params }: { params: Promise<{ slug: st
 
         ws.onLeaderboardUpdate((data) => {
           if (!isMounted || data.monumentSlug !== slug) return
-          // Re-fetch to get the latest ranked list
           fetchLeaderboard(slug).then(ranked => {
             if (!isMounted) return
             const mine = player ? ranked.find((e) => e.player_id === player.id) ?? null : null
@@ -68,9 +177,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ slug: st
 
       return () => {
         isMounted = false
-        if (ws) {
-          ws.off('leaderboard:newEntry')
-        }
+        if (ws) ws.off('leaderboard:newEntry')
       }
     }
   }, [slug, router])
@@ -85,6 +192,15 @@ export default function LeaderboardPage({ params }: { params: Promise<{ slug: st
 
   const accentColor = monument.accent === 'green' ? '#168447' : '#46a9d8'
   const player = getClientSession()
+  // Electoral monuments get their own vote card; others cross-promo Tinubu
+  const voteConfig = VOTE_CONFIG[monument.slug] ?? (['tinubu', 'hamzat'].includes(monument.slug) ? null : TINUBU_PROMO)
+
+  // Other monuments to cross-link (exclude current)
+  const crossLinks: { slug: string; label: string }[] = [
+    { slug: 'tinubu',    label: 'Tinubu Challenge' },
+    { slug: 'hamzat',    label: 'Hamzat Challenge' },
+    { slug: 'oyebanji',  label: 'Oyebanji Challenge' },
+  ].filter((x) => x.slug !== slug)
 
   function formatTime(seconds: number) {
     const m = Math.floor(seconds / 60)
@@ -156,7 +272,7 @@ export default function LeaderboardPage({ params }: { params: Promise<{ slug: st
             <div className="lb-table">
               <div className="lb-table-head">
                 <span className="lb-col-rank">Rank</span>
-                <span className="lb-col-name">Name</span>
+                <span className="lb-col-name">Player</span>
                 <span className="lb-col-score">Score</span>
                 <span className="lb-col-correct">Correct</span>
                 <span className="lb-col-time">Time</span>
@@ -179,6 +295,9 @@ export default function LeaderboardPage({ params }: { params: Promise<{ slug: st
             </div>
           </div>
 
+          {/* Vote card — only for electoral monuments */}
+          {voteConfig && <VoteCard config={voteConfig} accentColor={accentColor} />}
+
           {/* CTAs */}
           <div className="lb-cta-row">
             <Link href={`/challenge/${monument.slug}/instructions`} className="button button-dark">
@@ -189,12 +308,16 @@ export default function LeaderboardPage({ params }: { params: Promise<{ slug: st
             </Link>
           </div>
 
-          {/* Cross-link */}
+          {/* Cross-links to other challenges */}
           <div className="lb-other">
-            <p className="lb-other-label">Also available on Modexx</p>
-            {monument.slug === 'tinubu'
-              ? <Link href="/leaderboard/sanwo-olu" className="text-link">Sanwo-Olu Challenge leaderboard <ArrowRight size={14} /></Link>
-              : <Link href="/leaderboard/tinubu" className="text-link">Tinubu Challenge leaderboard <ArrowRight size={14} /></Link>}
+            <p className="lb-other-label">Also on Modexx</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {crossLinks.map((x) => (
+                <Link key={x.slug} href={`/leaderboard/${x.slug}`} className="text-link">
+                  {x.label} leaderboard <ArrowRight size={14} />
+                </Link>
+              ))}
+            </div>
           </div>
 
         </div>

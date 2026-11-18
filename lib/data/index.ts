@@ -1,5 +1,5 @@
 import { tinubuMonument } from './tinubu'
-import { sanwoOluMonument } from './sanwo-olu'
+import { hamzatMonument } from './hamzat'
 import { oyebanjiMonument } from './oyebanji'
 import { ekitiLogoMonument } from './ekiti-logo'
 import type { Monument } from './monuments'
@@ -8,7 +8,7 @@ export * from './monuments'
 
 const monumentMap: Record<string, Monument> = {
   tinubu: tinubuMonument,
-  'sanwo-olu': sanwoOluMonument,
+  hamzat: hamzatMonument,
   oyebanji: oyebanjiMonument,
   'ekiti-logo': ekitiLogoMonument,
 }

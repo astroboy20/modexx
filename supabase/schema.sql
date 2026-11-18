@@ -19,9 +19,10 @@ create table if not exists public.leaderboard_entries (
   monument_slug       varchar(50) not null,
   display_name        varchar(20) not null,
   voters_card_number  varchar(50),
-  score               int not null check (score >= 0 and score <= 1000),
+  score               int not null check (score >= 0 and score <= 1000),  -- cumulative score
   correct_count       int not null check (correct_count >= 0 and correct_count <= 10),
   completion_seconds  int not null check (completion_seconds >= 0),
+  attempt_number      int not null default 1 check (attempt_number >= 1 and attempt_number <= 10),
   completed_at        timestamptz not null default now()
 );
 
@@ -82,6 +83,7 @@ create or replace view public.leaderboard_best as
     score,
     correct_count,
     completion_seconds,
+    attempt_number,
     completed_at
   from public.leaderboard_entries
   order by player_id, monument_slug, score desc, correct_count desc, completion_seconds asc;

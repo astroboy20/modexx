@@ -30,9 +30,9 @@ const heroSlides = [
     index: "MX / 001",
   },
   {
-    img: "/sanwo-olu.png",
-    label: "Babajide Sanwo-Olu",
-    sub: "Governor, Lagos State",
+    img: "/hamzat-potrait.png",
+    label: "Dr. Kadri Obafemi Hamzat",
+    sub: "Deputy Governor, Lagos State · APC 2027 Candidate",
     index: "MX / 002",
   },
   {

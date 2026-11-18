@@ -7,10 +7,12 @@ import type { Monument } from '@/lib/data/index'
 interface ScorecardPreviewProps {
   monument: Monument
   displayName: string
-  score: number
+  score: number           // per-attempt score (max 100)
   correctCount: number
   completionSeconds: number
   rank: number | null
+  cumulativeScore?: number  // total across all retakes (max 1000)
+  attemptNumber?: number
   onClose: () => void
 }
 
@@ -33,10 +35,10 @@ const ELECTION_CONFIG = {
     electionDate:  PRESIDENTIAL_ELECTION,
     electionLabel: 'Presidential Election · Jan 16, 2027',
   },
-  'sanwo-olu': {
-    portrait:      '/sanwo-olu.png',
-    subjectImg:    '/sanwo-olu.png',
-    cta:           'Vote Sanwo-Olu 2027',
+  hamzat: {
+    portrait:      '/hamzat-potrait.png',
+    subjectImg:    '/hamzat-potrait.png',
+    cta:           'Vote Hamzat 2027',
     electionDate:  LAGOS_ELECTION,
     electionLabel: 'Lagos Governorship · Feb 6, 2027',
   },
@@ -73,16 +75,20 @@ async function loadImage(src: string): Promise<HTMLImageElement> {
 async function renderScorecard(opts: {
   monument: Monument
   displayName: string
-  score: number
+  score: number           // per-attempt (max 100)
   correctCount: number
   completionSeconds: number
   rank: number | null
   accentColor: string
   electionCfg: typeof ELECTION_CONFIG[keyof typeof ELECTION_CONFIG]
   countdown: string
+  cumulativeScore?: number  // total across retakes (max 1000)
+  attemptNumber?: number
   appUrl?: string
 }): Promise<Blob> {
   const { monument, displayName, score, correctCount, completionSeconds, rank, accentColor, electionCfg, countdown } = opts
+  const cumulativeScore = opts.cumulativeScore ?? score
+  const attemptNumber   = opts.attemptNumber ?? 1
   const appUrl = (opts.appUrl ?? (typeof window !== 'undefined' ? window.location.origin : 'https://modexx-one.vercel.app')).replace(/\/$/, '')
   const mins = Math.floor(completionSeconds / 60)
   const secs = completionSeconds % 60
@@ -173,9 +179,9 @@ async function renderScorecard(opts: {
   ctx.textAlign = 'center'
   ctx.fillText(`@${displayName}`, W / 2, SCORE_Y + 16)
 
-  // Score — measure text to centre the "800 / 1,000" group properly
+  // Per-attempt score out of 100
   const scoreStr = String(score)
-  const denomStr = ' / 1,000'
+  const denomStr = ' / 100'
   ctx.font = 'bold 64px Arial'
   const scoreW = ctx.measureText(scoreStr).width
   ctx.font = '18px Arial'
@@ -190,18 +196,18 @@ async function renderScorecard(opts: {
 
   ctx.fillStyle = '#aaaaaa'
   ctx.font = '18px Arial'
-  ctx.fillText(denomStr, groupX + scoreW, BIG_Y - 4)  // slight offset for baseline alignment
+  ctx.fillText(denomStr, groupX + scoreW, BIG_Y - 4)
 
   ctx.textAlign = 'center'
 
   ctx.fillStyle = '#aaaaaa'
   ctx.font = '10px Arial'
-  ctx.fillText('POINTS SCORED', W / 2, LABEL_Y)
+  ctx.fillText('THIS ATTEMPT · CUMULATIVE: ' + cumulativeScore + ' / 1,000', W / 2, LABEL_Y)
 
   // ── Stats ─────────────────────────────────────────────────────────────
   const stats = [
     { v: `${correctCount}/10`, l: 'CORRECT' },
-    { v: '10/10',              l: 'EXPLORED' },
+    { v: `#${attemptNumber}`,  l: 'ATTEMPT' },
     { v: `${mins}m ${secs}s`,  l: 'TIME' },
     ...(rank ? [{ v: `#${rank}`, l: 'RANK' }] : []),
   ]
@@ -309,7 +315,7 @@ export { renderScorecard, ELECTION_CONFIG, daysUntil }
 // ── Component ───────────────────────────────────────────────────────────────
 
 export default function ScorecardPreview({
-  monument, displayName, score, correctCount, completionSeconds, rank, onClose,
+  monument, displayName, score, correctCount, completionSeconds, rank, cumulativeScore, attemptNumber, onClose,
 }: ScorecardPreviewProps) {
   const [downloading, setDownloading] = useState(false)
   const [sharing,    setSharing]    = useState(false)
@@ -328,7 +334,7 @@ export default function ScorecardPreview({
 
   async function getBlob(): Promise<Blob> {
     if (blobRef.current) return blobRef.current
-    const blob = await renderScorecard({ monument, displayName, score, correctCount, completionSeconds, rank, accentColor, electionCfg, countdown })
+    const blob = await renderScorecard({ monument, displayName, score, correctCount, completionSeconds, rank, accentColor, electionCfg, countdown, cumulativeScore, attemptNumber })
     blobRef.current = blob
     return blob
   }
@@ -361,7 +367,7 @@ export default function ScorecardPreview({
       const shareText = [
         `🏛 ${monument.name}`,
         ``,
-        `I scored ${score}/1,000 pts — ${correctCount}/10 correct${rank ? ` · Ranked #${rank}` : ''}.`,
+        `I scored ${score}/100 pts this attempt · ${cumulativeScore ?? score}/1,000 total — ${correctCount}/10 correct${rank ? ` · Ranked #${rank}` : ''}.`,
         ``,
         `🗳 ${electionCfg.cta} — ${countdown}`,
         ``,
@@ -438,9 +444,9 @@ export default function ScorecardPreview({
               <p className="sc-player-name">@{displayName}</p>
               <div className="sc-score-display">
                 <span className="sc-score-number" style={{ color: accentColor }}>{score}</span>
-                <span className="sc-score-denom">/ 1,000</span>
+                <span className="sc-score-denom">/ 100</span>
               </div>
-              <p className="sc-score-label">points scored</p>
+              <p className="sc-score-label">this attempt · cumulative: {cumulativeScore ?? score} / 1,000</p>
             </div>
 
             <div className="sc-stats-row">

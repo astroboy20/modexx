@@ -15,6 +15,7 @@ export interface Story {
   dateLabel: string
   sources: Source[]
   editorialNote?: string
+  cardImage?: string   // optional image shown after the last talking-point card (URL or /public path)
 }
 
 export interface Hotspot {
@@ -49,6 +50,7 @@ export interface Monument {
   intro: string
   image: string            // portrait/subject image path used across all monument views
   portraitFit?: 'cover' | 'contain'   // how the image fills the portrait container (default: cover)
+  imagePosition?: string   // CSS object-position override e.g. 'center 15%' (default: 'top center')
   emblem?: string          // optional state/org emblem
   hotspots: Hotspot[]
   stories: Story[]

@@ -9,6 +9,7 @@ const MONUMENTS = {
     image: '/tinubu-president.jpg',
     alt: 'President Bola Ahmed Tinubu',
     portraitFit: 'cover' as const,
+    aspectRatio: 3 / 4,   // width/height — tinubu portrait is roughly 3:4
     dataFile: 'lib/data/tinubu.ts',
     hotspots: [
       { id: 'tinubu-h1',  order: 1,  metaphor: 'Cap',           label: 'The Beginning'           },
@@ -23,28 +24,30 @@ const MONUMENTS = {
       { id: 'tinubu-h10', order: 10, metaphor: 'Full Figure',   label: 'Presidency in Context'    },
     ],
   },
-  'sanwo-olu': {
-    image: '/sanwo-olu.png',
-    alt: 'Governor Babajide Sanwo-Olu',
+  hamzat: {
+    image: '/hamzat-potrait.png',
+    alt: 'Dr. Kadri Obafemi Hamzat',
     portraitFit: 'cover' as const,
-    dataFile: 'lib/data/sanwo-olu.ts',
+    aspectRatio: 1024 / 1536,  // 2:3
+    dataFile: 'lib/data/hamzat.ts',
     hotspots: [
-      { id: 'sanwo-h1',  order: 1,  metaphor: 'Cap',            label: 'Journey to Alausa'    },
-      { id: 'sanwo-h2',  order: 2,  metaphor: 'Glasses',        label: 'The Lagos Vision'     },
-      { id: 'sanwo-h3',  order: 3,  metaphor: 'Wristwatch',     label: 'Years of Governance'  },
-      { id: 'sanwo-h4',  order: 4,  metaphor: 'Torso/Outfit',   label: 'Public Administration'},
-      { id: 'sanwo-h5',  order: 5,  metaphor: 'Hands',          label: 'Serving Lagosians'    },
-      { id: 'sanwo-h6',  order: 6,  metaphor: 'Ring',           label: 'The Finer Details'    },
-      { id: 'sanwo-h7',  order: 7,  metaphor: 'Lapel/Pocket',   label: 'People & Services'    },
-      { id: 'sanwo-h8',  order: 8,  metaphor: 'Belt',           label: 'Connecting the City'  },
-      { id: 'sanwo-h9',  order: 9,  metaphor: 'Shoes',          label: 'Moving Lagos'         },
-      { id: 'sanwo-h10', order: 10, metaphor: 'Full Figure',    label: 'The Lagos Story'      },
+      { id: 'hamzat-h1',  order: 1,  metaphor: 'Cap',           label: 'Lagos Roots'              },
+      { id: 'hamzat-h2',  order: 2,  metaphor: 'Glasses',       label: 'The Systems Lens'         },
+      { id: 'hamzat-h3',  order: 3,  metaphor: 'Wristwatch',    label: 'Timeline of Service'      },
+      { id: 'hamzat-h4',  order: 4,  metaphor: 'Torso/Agbada',  label: "The Engineer's Blueprint" },
+      { id: 'hamzat-h5',  order: 5,  metaphor: 'Hands',         label: 'Decisions & Institutions' },
+      { id: 'hamzat-h6',  order: 6,  metaphor: 'Collar',        label: 'The Political Journey'    },
+      { id: 'hamzat-h7',  order: 7,  metaphor: 'Lapel/Pocket',  label: 'People & Public Services' },
+      { id: 'hamzat-h8',  order: 8,  metaphor: 'Belt',          label: 'Connecting Lagos'         },
+      { id: 'hamzat-h9',  order: 9,  metaphor: 'Shoes',         label: 'Everyday Lagos'           },
+      { id: 'hamzat-h10', order: 10, metaphor: 'Full Figure',   label: 'Record & The Lagos Promise'},
     ],
   },
   oyebanji: {
     image: '/oyebanji-portrait.png',
     alt: 'Governor Biodun Oyebanji',
     portraitFit: 'contain' as const,
+    aspectRatio: 1024 / 1536,  // 2:3
     dataFile: 'lib/data/oyebanji.ts',
     hotspots: [
       { id: 'oye-h1',  order: 1,  metaphor: 'Cap',           label: 'Ikogosi Beginnings'       },
@@ -63,6 +66,7 @@ const MONUMENTS = {
     image: '/ekiti-logo.jfif',
     alt: 'Ekiti State Official Emblem',
     portraitFit: 'contain' as const,
+    aspectRatio: 1,  // square logo
     dataFile: 'lib/data/ekiti-logo.ts',
     hotspots: [
       { id: 'ekiti-h1', order: 1, metaphor: 'Outer Border',    label: 'The Woven Cord'   },
@@ -91,10 +95,10 @@ interface Point {
 }
 
 const ACCENT: Record<MonumentKey, string> = {
-  tinubu: '#168447',
-  'sanwo-olu': '#46a9d8',
-  oyebanji: '#168447',
-  'ekiti-logo': '#168447',
+  tinubu:      '#168447',
+  hamzat:      '#46a9d8',
+  oyebanji:    '#168447',
+  'ekiti-logo':'#168447',
 }
 
 // Default label offset from the dot (in % of image size)
@@ -283,10 +287,9 @@ export default function CalibratePage() {
               alt={monument.alt}
               style={{
                 display: 'block',
-                width: 460,
-                height: Math.round(460 * (4 / 3)),
-                maxWidth: '44vw',
-                maxHeight: '82vh',
+                height: 'calc(100vh - 100px)',
+                width: `calc((100vh - 100px) * ${monument.aspectRatio})`,
+                maxWidth: '46vw',
                 objectFit: monument.portraitFit,
                 objectPosition: 'center top',
                 background: '#111',

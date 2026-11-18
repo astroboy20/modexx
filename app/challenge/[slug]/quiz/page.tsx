@@ -13,10 +13,12 @@ import {
   addToHistory,
   clearActiveAttempt,
   generateId,
+  getUsedQuestionIds,
+  getAttemptCount,
   type QuizAttempt,
 } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
-import { selectQuestions, calculateScore } from '@/lib/quiz'
+import { selectQuestions, calculateScore, MAX_ATTEMPTS } from '@/lib/quiz'
 import SiteHeader from '@/components/SiteHeader'
 
 export default function QuizPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -69,7 +71,9 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
       qs = currentAttempt.assignedQuestionIds.map((id) => qMap[id]).filter(Boolean)
       setAnswers(currentAttempt.answers)
     } else {
-      qs = selectQuestions(m.questions, 10)
+      const usedIds = getUsedQuestionIds(slug)
+      const attemptNumber = getAttemptCount(slug) + 1
+      qs = selectQuestions(m.questions, 10, usedIds)
       currentAttempt = {
         id: generateId(),
         monumentSlug: slug,
@@ -81,6 +85,7 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
         score: 0,
         correctCount: 0,
         status: 'in_progress',
+        attemptNumber,
       }
       saveAttempt(currentAttempt)
     }
@@ -109,6 +114,13 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
     const unanswered = questions.filter((q) => answers[q.id] === undefined).length
     if (unanswered > 0) { setShowConfirm(true); return }
     
+    // Check retake limit
+    const attemptsDone = getAttemptCount(slug)
+    if (attemptsDone >= MAX_ATTEMPTS) {
+      toast.error('You have reached the maximum of 10 attempts for this challenge.')
+      return
+    }
+
     // For participants, show voter card modal before submitting (unless monument skips it)
     if (userRole === 'participant' && requiresVoterCard) {
       setShowVoterCardModal(true)
@@ -145,7 +157,7 @@ export default function QuizPage({ params }: { params: Promise<{ slug: string }>
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
         monumentSlug: monument.slug, 
-        score, 
+        score,           // per-attempt score (max 100); server accumulates cumulative
         correctCount, 
         completionSeconds,
         votersCardNumber: userRole === 'participant' ? votersCardNumber : undefined

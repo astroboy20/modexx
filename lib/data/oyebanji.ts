@@ -9,7 +9,7 @@ export const oyebanjiMonument: Monument = {
   scope: 'Governorship · 16 October 2022 — present',
   accent: 'green',
   image: '/oyebanji-portrait.png',
-  portraitFit: 'contain',
+  imagePosition: 'top',
   intro:
     'From the hills of Ikogosi to Government House in Ado-Ekiti — 10 chapters tracing the life, public service record, and governance of Biodun Abayomi Oyebanji, the first governor in Ekiti State history to win a consecutive second term.',
 

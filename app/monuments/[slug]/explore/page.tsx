@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React, { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
@@ -169,7 +169,6 @@ function splitIntoTalkingPoints(body: string): string[] {
   result.push(paras.slice(3).join('\n\n'))
   return result
 }
-
 interface ChapterCardDeckProps {
   monument: Monument
   hotspot: Hotspot
@@ -182,7 +181,10 @@ interface ChapterCardDeckProps {
 
 function ChapterCardDeck({ monument, hotspot, story, onClose, accentColor = '#168447', nav, action }: ChapterCardDeckProps) {
   const talkingPoints = useMemo(() => splitIntoTalkingPoints(story?.body || 'Story content — editorial review required.'), [story?.body])
-  const total = talkingPoints.length
+  // If a cardImage is provided, we add an extra "image" slide after all talking points
+  const hasImageSlide = !!story?.cardImage
+  const total = talkingPoints.length + (hasImageSlide ? 1 : 0)
+  const isImageSlide = (idx: number) => hasImageSlide && idx === talkingPoints.length
   const [pointIndex, setPointIndex] = useState(0)
   const [displayIndex, setDisplayIndex] = useState(0)
   const [spinning, setSpinning] = useState(false)
@@ -267,13 +269,25 @@ function ChapterCardDeck({ monument, hotspot, story, onClose, accentColor = '#16
               <button className="ccd-close" onClick={onClose} aria-label="Close"><X size={16} /></button>
             </div>
             <div className="ccd-body">
-              {displayIndex === 0 && (
+              {displayIndex === 0 && !isImageSlide(displayIndex) && (
                 <>
                   <h2 className="ccd-headline">{story?.headline || hotspot.label}</h2>
                   {story?.dateLabel && <p className="ccd-date">{story.dateLabel}</p>}
                 </>
               )}
-              <p className="ccd-text">{talkingPoints[displayIndex]}</p>
+              {isImageSlide(displayIndex) ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '4px 0' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={story!.cardImage}
+                    alt={story?.headline || hotspot.label}
+                    style={{ width: '100%', borderRadius: 10, maxHeight: 240, objectFit: 'cover', display: 'block' }}
+                  />
+                  {story?.dateLabel && <p style={{ margin: 0, fontSize: 12, color: '#68736d', textAlign: 'center' }}>{story.dateLabel}</p>}
+                </div>
+              ) : (
+                <p className="ccd-text">{talkingPoints[displayIndex]}</p>
+              )}
             </div>
             <div className="ccd-dots" aria-hidden="true">
               {talkingPoints.map((_, i) => (<span key={i} className={`ccd-dot${i === pointIndex ? ' active' : ''}`} />))}
@@ -638,7 +652,7 @@ function ParticipantExplore({ monument, accentColor, justUnlockedId }: Participa
           <div className="explorer-portrait-container">
             <div className="explorer-portrait-bg" aria-label={`${monument.subject} portrait`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={monument.image} alt={monument.subject} className="portrait-image" draggable={false} style={{ objectFit: monument.portraitFit ?? 'cover' }} />
+              <img src={monument.image} alt={monument.subject} className="portrait-image" draggable={false} style={{ objectFit: 'contain', objectPosition: 'center' }} />
               {currentHotspot && (
                 <>
                   {/* SVG arrow from label to dot */}
@@ -807,7 +821,7 @@ function OrganizerExplore({ monument, accentColor }: { monument: Monument; accen
           <div className="explorer-portrait-container">
             <div className="explorer-portrait-bg" aria-label={`${monument.subject} portrait`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={monument.image} alt={monument.subject} className="portrait-image" draggable={false} style={{ objectFit: monument.portraitFit ?? 'cover' }} />
+              <img src={monument.image} alt={monument.subject} className="portrait-image" draggable={false} style={{ objectFit: 'contain', objectPosition: 'center' }} />
               {/* SVG arrows from labels to dots */}
               <svg className="xp-arrows" viewBox="0 0 100 100" preserveAspectRatio="none">
                 <defs>

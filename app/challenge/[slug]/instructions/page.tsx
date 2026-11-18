@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, ArrowRight, Lock, CheckCircle2, HelpCircle, Trophy } from 'lucide-react'
 import { getMonument } from '@/lib/data/index'
 import type { Monument } from '@/lib/data/index'
-import { getExploredHotspots, getBestAttempt, type QuizAttempt } from '@/lib/storage'
+import { getExploredHotspots, getBestAttempt, getAttemptCount, getCumulativeScore, type QuizAttempt } from '@/lib/storage'
 import { getClientSession } from '@/lib/session-client'
+import { MAX_ATTEMPTS, MAX_SCORE_PER_ATTEMPT } from '@/lib/quiz'
 import SiteHeader from '@/components/SiteHeader'
 
 export default function InstructionsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -18,6 +19,8 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
   const [ready, setReady] = useState(false)
   const [locked, setLocked] = useState(true)
   const [bestAttempt, setBestAttempt] = useState<QuizAttempt | null>(null)
+  const [attemptCount, setAttemptCount] = useState(0)
+  const [cumulativeScore, setCumulativeScore] = useState(0)
 
   useEffect(() => {
     const m = getMonument(slug)
@@ -30,12 +33,15 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
     }
 
     const explored = getExploredHotspots(slug)
-    const count = explored.length
     const best = getBestAttempt(slug)
+    const count = getAttemptCount(slug)
+    const cumulative = getCumulativeScore(slug)
     setMonument(m)
-    setExploredCount(count)
-    setLocked(count < m.hotspots.length)
+    setExploredCount(explored.length)
+    setLocked(explored.length < m.hotspots.length)
     setBestAttempt(best)
+    setAttemptCount(count)
+    setCumulativeScore(cumulative)
     setReady(true)
   }, [slug, router])
 
@@ -63,13 +69,23 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
         <div className="instructions-inner">
           <h1 className="instructions-title">{monument.name}</h1>
 
-          {/* Returning player — personal best banner */}
+          {/* Returning player — cumulative score banner */}
           {bestAttempt && (
             <div className="instructions-returning-banner" style={{ borderColor: accentColor, background: accentSoft }}>
               <Trophy size={18} style={{ color: accentColor, flexShrink: 0 }} />
-              <div>
-                <p className="status-label">Your best score: <strong style={{ color: accentColor }}>{bestAttempt.score} / 1,000 pts</strong></p>
-                <p className="status-desc">{bestAttempt.correctCount}/10 correct — retake to improve your rank</p>
+              <div style={{ flex: 1 }}>
+                <p className="status-label">Best attempt: <strong style={{ color: accentColor }}>{bestAttempt.score} / {MAX_SCORE_PER_ATTEMPT} pts</strong></p>
+                <p className="status-desc">{bestAttempt.correctCount}/10 correct · {attemptCount} of {MAX_ATTEMPTS} attempts used</p>
+                {attemptCount > 0 && (
+                  <div style={{ marginTop: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--muted)', marginBottom: 3 }}>
+                      <span>Cumulative: {cumulativeScore} / 1,000 pts</span>
+                    </div>
+                    <div style={{ height: 4, borderRadius: 2, background: 'var(--line)' }}>
+                      <div style={{ height: '100%', borderRadius: 2, background: accentColor, width: `${(cumulativeScore / 1000) * 100}%` }} />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -97,9 +113,9 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
             <div className="rules-grid">
               {[
                 { icon: <HelpCircle size={22} style={{ color: accentColor }} />, title: '10 questions' },
-                { icon: <Trophy size={22} style={{ color: accentColor }} />, title: '100 pts each' },
-                { icon: <CheckCircle2 size={22} style={{ color: accentColor }} />, title: 'Best score counts' },
-                { icon: <Trophy size={22} style={{ color: accentColor }} />, title: 'Leaderboard ranked' },
+                { icon: <Trophy size={22} style={{ color: accentColor }} />, title: '10 pts each' },
+                { icon: <CheckCircle2 size={22} style={{ color: accentColor }} />, title: `${MAX_SCORE_PER_ATTEMPT} pts per attempt` },
+                { icon: <Trophy size={22} style={{ color: accentColor }} />, title: `${MAX_ATTEMPTS} retakes max` },
               ].map((rule) => (
                 <div className="rule-card" key={rule.title}>
                   {rule.icon}
@@ -107,6 +123,9 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
                 </div>
               ))}
             </div>
+            <p style={{ marginTop: 10, fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
+              Scores accumulate across retakes — max 1,000 pts total. Each retake shows fresh questions.
+            </p>
           </div>
 
           <div className="instructions-cta">
@@ -114,9 +133,18 @@ export default function InstructionsPage({ params }: { params: Promise<{ slug: s
               <Link href={`/monuments/${monument.slug}/explore`} className="button button-dark">
                 Continue exploring <ArrowRight size={16} />
               </Link>
+            ) : attemptCount >= MAX_ATTEMPTS ? (
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 8 }}>All 10 attempts used. Final score: <strong style={{ color: accentColor }}>{cumulativeScore} / 1,000</strong></p>
+                <Link href={`/leaderboard/${monument.slug}`} className="button button-primary">
+                  View leaderboard <ArrowRight size={16} />
+                </Link>
+              </div>
             ) : (
               <Link href={`/challenge/${monument.slug}/quiz`} className="button button-primary">
-                {bestAttempt ? <>Retake the challenge <ArrowRight size={16} /></> : <>Start the challenge <ArrowRight size={16} /></>}
+                {bestAttempt
+                  ? <>Retake ({MAX_ATTEMPTS - attemptCount} left) <ArrowRight size={16} /></>
+                  : <>Start the challenge <ArrowRight size={16} /></>}
               </Link>
             )}
             <Link href={`/leaderboard/${monument.slug}`} className="text-link">

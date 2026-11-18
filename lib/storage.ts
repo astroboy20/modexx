@@ -96,13 +96,16 @@ export interface QuizAttempt {
   answers: Record<string, number> // questionId -> selectedIndex
   startedAt: string
   submittedAt: string | null
-  score: number
+  score: number          // score for THIS attempt (max 100)
   correctCount: number
   status: 'in_progress' | 'completed'
+  attemptNumber?: number // which retake this is (1-based)
 }
 
-const ACTIVE_ATTEMPT_KEY = (slug: string) => `modexx_attempt_${slug}`
+const ACTIVE_ATTEMPT_KEY  = (slug: string) => `modexx_attempt_${slug}`
 const ATTEMPT_HISTORY_KEY = (slug: string) => `modexx_history_${slug}`
+// All question IDs ever answered by this player for a monument (for deduplication)
+const USED_QUESTIONS_KEY  = (slug: string) => `modexx_used_qs_${slug}`
 
 export function getActiveAttempt(slug: string): QuizAttempt | null {
   return safeGet<QuizAttempt | null>(ACTIVE_ATTEMPT_KEY(slug), null)
@@ -123,6 +126,10 @@ export function getAttemptHistory(slug: string): QuizAttempt[] {
 export function addToHistory(attempt: QuizAttempt): void {
   const history = getAttemptHistory(attempt.monumentSlug)
   safeSet(ATTEMPT_HISTORY_KEY(attempt.monumentSlug), [attempt, ...history])
+  // Record the answered question IDs so future retakes get different questions
+  if (attempt.status === 'completed') {
+    recordUsedQuestions(attempt.monumentSlug, attempt.assignedQuestionIds)
+  }
 }
 
 export function getBestAttempt(slug: string): QuizAttempt | null {
@@ -133,6 +140,33 @@ export function getBestAttempt(slug: string): QuizAttempt | null {
     if (a.score === best.score && a.correctCount > best.correctCount) return a
     return best
   })
+}
+
+// ── Cumulative score across attempts (max 1000) ────────────────────────────
+
+export function getCumulativeScore(slug: string): number {
+  const history = getAttemptHistory(slug).filter((a) => a.status === 'completed')
+  return history.reduce((sum, a) => sum + a.score, 0)
+}
+
+export function getAttemptCount(slug: string): number {
+  return getAttemptHistory(slug).filter((a) => a.status === 'completed').length
+}
+
+// ── Used question tracking for retake deduplication ───────────────────────
+
+export function getUsedQuestionIds(slug: string): string[] {
+  return safeGet<string[]>(USED_QUESTIONS_KEY(slug), [])
+}
+
+function recordUsedQuestions(slug: string, ids: string[]): void {
+  const existing = new Set(getUsedQuestionIds(slug))
+  ids.forEach((id) => existing.add(id))
+  safeSet(USED_QUESTIONS_KEY(slug), Array.from(existing))
+}
+
+export function clearUsedQuestions(slug: string): void {
+  safeRemove(USED_QUESTIONS_KEY(slug))
 }
 
 // ── Leaderboard ────────────────────────────────────────────────────────────
@@ -151,15 +185,15 @@ export interface LeaderboardEntry {
 const LEADERBOARD_KEY = (slug: string) => `modexx_leaderboard_${slug}`
 
 export function getLeaderboard(slug: string): LeaderboardEntry[] {
-  return safeGet<LeaderboardEntry[]>(LEADERBOARD_KEY(slug), getDemoLeaderboard(slug))
+  return safeGet<LeaderboardEntry[]>(LEADERBOARD_KEY(slug), [])
 }
 
 export function addLeaderboardEntry(entry: LeaderboardEntry): void {
   const board = getLeaderboard(entry.monumentSlug)
-  // Only keep best score per player
+  // Keep cumulative best per player (cumulative score always goes up)
   const filtered = board.filter((e) => e.playerId !== entry.playerId)
   const existing = board.find((e) => e.playerId === entry.playerId)
-  if (existing && existing.score >= entry.score) return // don't overwrite a better score
+  if (existing && existing.score >= entry.score) return
   safeSet(LEADERBOARD_KEY(entry.monumentSlug), [...filtered, entry])
 }
 
@@ -184,22 +218,4 @@ export function getRankedLeaderboard(slug: string): (LeaderboardEntry & { rank: 
     }
     return { ...entry, rank }
   })
-}
-
-// Seed demo leaderboard data so pages aren't empty on first load
-function getDemoLeaderboard(slug: string): LeaderboardEntry[] {
-  const names =
-    slug === 'tinubu'
-      ? ['Adaeze_K', 'Femi_O', 'Ngozi_T', 'Emeka_B', 'Aisha_M', 'Rotimi_A', 'Chisom_D', 'Bello_Y']
-      : ['Temilola_S', 'Kunle_B', 'Adunola_F', 'Gbemi_O', 'Rasheed_T', 'Lola_D', 'Seun_K', 'Ife_A']
-  return names.map((name, i) => ({
-    id: `demo-${slug}-${i}`,
-    playerId: `demo-player-${i}`,
-    displayName: name,
-    monumentSlug: slug,
-    score: Math.max(0, 1000 - i * 100 + Math.floor(Math.random() * 50)),
-    correctCount: Math.max(0, 10 - i),
-    completionSeconds: 120 + i * 15,
-    completedAt: new Date(Date.now() - i * 86400000).toISOString(),
-  }))
 }

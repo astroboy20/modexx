@@ -49,7 +49,7 @@ export default async function MonumentPage({ params }: { params: Promise<{ slug:
               position: 'absolute', inset: 0,
               width: '100%', height: '100%',
               objectFit: m.portraitFit ?? 'cover',
-              objectPosition: 'top center',
+              objectPosition: m.imagePosition ?? 'top center',
               display: 'block',
             }}
           />
